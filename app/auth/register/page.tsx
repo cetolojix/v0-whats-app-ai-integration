@@ -25,8 +25,18 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [step, setStep] = useState("register")
   const [verificationCode, setVerificationCode] = useState("")
+  const [supabaseAvailable, setSupabaseAvailable] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
+
+  const getSupabaseClient = () => {
+    try {
+      return createClient()
+    } catch (error) {
+      console.log("[v0] Supabase client creation failed:", error)
+      setSupabaseAvailable(false)
+      return null
+    }
+  }
 
   const formatPhoneNumber = (phone: string) => {
     // Türkiye telefon numarası formatı: +90XXXXXXXXXX
@@ -151,6 +161,15 @@ export default function RegisterPage() {
 
       if (result.success) {
         console.log("[v0] Phone verification successful, user created")
+
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+          setError("Veritabanı bağlantısı mevcut değil. Hesap oluşturuldu ancak otomatik giriş yapılamadı.")
+          setTimeout(() => {
+            router.push("/auth/login")
+          }, 2000)
+          return
+        }
 
         if (result.loginCredentials) {
           console.log("[v0] Login credentials received, attempting automatic login...")
@@ -318,6 +337,15 @@ export default function RegisterPage() {
               {message && (
                 <Alert>
                   <AlertDescription>{message}</AlertDescription>
+                </Alert>
+              )}
+
+              {!supabaseAvailable && (
+                <Alert>
+                  <AlertDescription className="text-amber-600">
+                    Veritabanı bağlantısı mevcut değil. Kayıt işlemi tamamlanabilir ancak otomatik giriş
+                    yapılamayabilir.
+                  </AlertDescription>
                 </Alert>
               )}
 

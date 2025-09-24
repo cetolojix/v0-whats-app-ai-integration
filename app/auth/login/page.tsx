@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showResendConfirmation, setShowResendConfirmation] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [supabaseAvailable, setSupabaseAvailable] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
@@ -32,13 +33,19 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
     setShowResendConfirmation(false)
 
     try {
       console.log("[v0] Attempting login with email:", email)
+
+      const supabase = createClient()
+      if (!supabase) {
+        setError("Veritabanı bağlantısı mevcut değil. Lütfen sistem yöneticisi ile iletişime geçin.")
+        setSupabaseAvailable(false)
+        return
+      }
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -67,7 +74,12 @@ export default function LoginPage() {
       router.push("/instances")
     } catch (error: unknown) {
       console.log("[v0] Login catch error:", error)
-      setError(error instanceof Error ? error.message : "Bir hata oluştu")
+      if (error instanceof Error && error.message.includes("Missing Supabase environment variables")) {
+        setError("Sistem yapılandırması eksik. Lütfen sistem yöneticisi ile iletişime geçin.")
+        setSupabaseAvailable(false)
+      } else {
+        setError(error instanceof Error ? error.message : "Bir hata oluştu")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -76,6 +88,11 @@ export default function LoginPage() {
   const handleResendConfirmation = async () => {
     if (countdown > 0) {
       setError(`Lütfen ${countdown} saniye bekleyin ve tekrar deneyin.`)
+      return
+    }
+
+    if (!supabaseAvailable) {
+      setError("Veritabanı bağlantısı mevcut değil.")
       return
     }
 
@@ -188,7 +205,7 @@ export default function LoginPage() {
                             Admin Email Doğrula
                           </Button>
                         )}
-                      {showResendConfirmation && email !== "admin@whatsapp-ai.com" && (
+                      {showResendConfirmation && email !== "admin@whatsapp-ai.com" && supabaseAvailable && (
                         <Button
                           type="button"
                           variant="outline"
@@ -202,9 +219,20 @@ export default function LoginPage() {
                       )}
                     </div>
                   )}
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full" disabled={isLoading || !supabaseAvailable}>
                     {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
                   </Button>
+                  {!supabaseAvailable && (
+                    <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
+                      <p>Sistem yapılandırması tamamlanmamış. Lütfen aşağıdaki environment variable'ları ayarlayın:</p>
+                      <ul className="mt-2 text-xs list-disc list-inside">
+                        <li>SUPABASE_URL</li>
+                        <li>NEXT_PUBLIC_SUPABASE_URL</li>
+                        <li>SUPABASE_ANON_KEY</li>
+                        <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 text-center text-sm">
                   Hesabınız yok mu?{" "}

@@ -2,11 +2,22 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function updateSession(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
+
+  // If Supabase credentials are not available, skip authentication
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.log("[v0] Supabase credentials not available in middleware, skipping auth")
+    return NextResponse.next({
+      request,
+    })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll()
@@ -25,28 +36,33 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (
-    !user &&
-    (request.nextUrl.pathname.startsWith("/admin") ||
-      request.nextUrl.pathname.startsWith("/instances") ||
-      request.nextUrl.pathname.startsWith("/dashboard"))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
-  }
+    if (
+      !user &&
+      (request.nextUrl.pathname.startsWith("/admin") ||
+        request.nextUrl.pathname.startsWith("/instances") ||
+        request.nextUrl.pathname.startsWith("/dashboard"))
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/auth/login"
+      return NextResponse.redirect(url)
+    }
 
-  if (
-    user &&
-    (request.nextUrl.pathname.startsWith("/auth/login") || request.nextUrl.pathname.startsWith("/auth/register"))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/instances"
-    return NextResponse.redirect(url)
+    if (
+      user &&
+      (request.nextUrl.pathname.startsWith("/auth/login") || request.nextUrl.pathname.startsWith("/auth/register"))
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/instances"
+      return NextResponse.redirect(url)
+    }
+  } catch (error) {
+    console.log("[v0] Auth error in middleware:", error)
+    // Continue without authentication if there's an error
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
