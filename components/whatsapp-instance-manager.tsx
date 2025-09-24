@@ -5,16 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings, TestTube, Workflow, Bot, Plus, MessageSquare, CheckCircle, LogOut } from "lucide-react"
+import { Settings, TestTube, Workflow, Bot, Plus, MessageSquare, CheckCircle, LogOut, Users } from "lucide-react"
 import { InstanceSetup } from "@/components/instance-setup"
 import { QRCodeDisplay } from "@/components/qr-code-display"
 import { WorkflowManager } from "@/components/workflow-manager"
 import { AIChatTester } from "@/components/ai-chat-tester"
-import { PromptCustomizer } from "@/components/prompt-customizer"
 import { InstanceDashboard } from "@/components/instance-dashboard"
 import { InstanceManagement } from "@/components/instance-management"
 import { FeatureShowcase } from "@/components/feature-showcase"
 import { ProgressSteps } from "@/components/progress-steps"
+import { ConversationManager } from "@/components/conversation-manager" // Added conversation manager import
+import { AIConfigurationDashboard } from "@/components/ai-configuration-dashboard" // Added AI configuration dashboard import
 import { getTranslation, type Translations } from "@/lib/i18n"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -257,10 +258,14 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
                 {selectedInstance && (
                   <Tabs defaultValue="dashboard" className="space-y-8">
                     <div className="flex items-center justify-between">
-                      <TabsList className="grid w-full max-w-3xl grid-cols-5 h-12 bg-muted/50 backdrop-blur-sm">
+                      <TabsList className="grid w-full max-w-4xl grid-cols-6 h-12 bg-muted/50 backdrop-blur-sm">
                         <TabsTrigger value="dashboard" className="gap-2 font-medium">
                           <Settings className="h-4 w-4" />
                           <span className="hidden sm:inline">{t.dashboard}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="conversations" className="gap-2 font-medium">
+                          <Users className="h-4 w-4" />
+                          <span className="hidden sm:inline">Conversations</span>
                         </TabsTrigger>
                         <TabsTrigger value="workflows" className="gap-2 font-medium">
                           <Workflow className="h-4 w-4" />
@@ -289,12 +294,19 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
                       <InstanceDashboard instanceName={selectedInstance} />
                     </TabsContent>
 
+                    <TabsContent value="conversations" className="space-y-6">
+                      <ConversationManager
+                        instanceId={instances.find((i) => i.instance_name === selectedInstance)?.id || ""}
+                        instanceName={selectedInstance}
+                      />
+                    </TabsContent>
+
                     <TabsContent value="workflows" className="space-y-6">
                       <WorkflowManager instanceName={selectedInstance} />
                     </TabsContent>
 
                     <TabsContent value="ai-config" className="space-y-6">
-                      <PromptCustomizer instanceName={selectedInstance} onPromptChange={setCustomPrompt} />
+                      <AIConfigurationDashboard instanceName={selectedInstance} />
                     </TabsContent>
 
                     <TabsContent value="test-chat" className="space-y-6">
