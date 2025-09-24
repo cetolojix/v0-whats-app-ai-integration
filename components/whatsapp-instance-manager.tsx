@@ -124,7 +124,10 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
 
     setActiveInstanceName(connectedInstanceName)
     setSelectedInstance(connectedInstanceName)
-    setCurrentStep("connected")
+
+    setTimeout(() => {
+      setCurrentStep("connected")
+    }, 1000)
   }
 
   const handleCreateNewInstance = () => {

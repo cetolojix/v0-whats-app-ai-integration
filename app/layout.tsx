@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 import "./globals.css"
 import { Suspense } from "react"
 
@@ -19,15 +20,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" data-bs-theme="light">
-      <head>
-        <script
+      <body className={`${GeistSans.variable} ${GeistMono.variable}`} style={{ fontFamily: "var(--font-geist-sans)" }}>
+        <Script
           src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
           integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
           crossOrigin="anonymous"
-          async
+          strategy="afterInteractive"
         />
-      </head>
-      <body className={`${GeistSans.variable} ${GeistMono.variable}`} style={{ fontFamily: "var(--font-geist-sans)" }}>
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />
       </body>

@@ -154,8 +154,16 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
           onConnected(instanceName)
 
           setTimeout(() => {
-            createAutomationWorkflow().catch((err) => console.error("[v0] Workflow creation failed:", err))
-          }, 1000)
+            createAutomationWorkflow()
+              .then(() => {
+                console.log("[v0] Workflow created successfully")
+              })
+              .catch((err) => {
+                console.error("[v0] Workflow creation failed:", err)
+                // Don't fail the connection if workflow creation fails
+                // The user can still use the instance manually
+              })
+          }, 2000) // Increased delay to ensure instance is fully ready
 
           return true
         } else if (response.ok && data.instance) {
@@ -176,8 +184,15 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             onConnected(instanceName)
 
             setTimeout(() => {
-              createAutomationWorkflow().catch((err) => console.error("[v0] Workflow creation failed:", err))
-            }, 1000)
+              createAutomationWorkflow()
+                .then(() => {
+                  console.log("[v0] Workflow created successfully")
+                })
+                .catch((err) => {
+                  console.error("[v0] Workflow creation failed:", err)
+                  // Don't fail the connection if workflow creation fails
+                })
+            }, 2000) // Increased delay
 
             return true
           } else if (state === "close") {
@@ -247,21 +262,31 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
 
   const createAutomationWorkflow = async () => {
     try {
+      console.log("[v0] Creating automation workflow for:", instanceName)
+
       const response = await fetch("/api/n8n/create-workflow", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ instanceName: instanceName }),
+        body: JSON.stringify({
+          instanceName: instanceName,
+          workflowType: "advanced-ai",
+        }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to create automation workflow")
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to create workflow`)
       }
 
-      console.log("n8n workflow created successfully")
+      const data = await response.json()
+      console.log("[v0] Workflow created successfully:", data)
+
+      return data
     } catch (err) {
-      console.error("Error creating workflow:", err)
+      console.error("[v0] Error creating workflow:", err)
+      return null
     }
   }
 
