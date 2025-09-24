@@ -1,0 +1,303 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  /* Lighter tech theme with better contrast and readability */
+  --background: oklch(0.15 0.05 240); /* Lighter dark blue instead of pure black */
+  --foreground: oklch(0.95 0.02 240); /* Slightly tinted white */
+  --card: oklch(0.2 0.08 240); /* Lighter card background */
+  --card-foreground: oklch(0.95 0.02 240);
+  --popover: oklch(0.2 0.08 240);
+  --popover-foreground: oklch(0.95 0.02 240);
+  --primary: oklch(0.75 0.25 260); /* Brighter primary */
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.25 0.08 240); /* Lighter secondary */
+  --secondary-foreground: oklch(0.95 0.02 240);
+  --muted: oklch(0.3 0.05 240); /* Much lighter muted */
+  --muted-foreground: oklch(0.75 0.08 240); /* Better contrast */
+  --accent: oklch(0.8 0.3 200); /* Brighter accent */
+  --accent-foreground: oklch(0.15 0.05 240);
+  --destructive: oklch(0.7 0.25 15);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.35 0.08 240); /* Much lighter borders */
+  --input: oklch(0.25 0.05 240); /* Lighter input backgrounds */
+  --ring: oklch(0.8 0.3 200);
+  --chart-1: oklch(0.8 0.3 200);
+  --chart-2: oklch(0.75 0.25 260);
+  --chart-3: oklch(0.7 0.25 320);
+  --chart-4: oklch(0.8 0.25 40);
+  --chart-5: oklch(0.75 0.25 120);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.18 0.06 240); /* Lighter sidebar */
+  --sidebar-foreground: oklch(0.95 0.02 240);
+  --sidebar-primary: oklch(0.8 0.3 200);
+  --sidebar-primary-foreground: oklch(0.15 0.05 240);
+  --sidebar-accent: oklch(0.25 0.08 240);
+  --sidebar-accent-foreground: oklch(0.95 0.02 240);
+  --sidebar-border: oklch(0.35 0.08 240);
+  --sidebar-ring: oklch(0.8 0.3 200);
+
+  /* Brighter tech-specific colors for better visibility */
+  --neon-blue: oklch(0.8 0.3 200);
+  --neon-purple: oklch(0.75 0.25 260);
+  --neon-cyan: oklch(0.85 0.25 180);
+  --tech-orange: oklch(0.8 0.25 40);
+  --tech-green: oklch(0.75 0.25 120);
+}
+
+.dark {
+  --background: oklch(0.05 0.02 240);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.08 0.03 240);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.08 0.03 240);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.7 0.25 260);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.12 0.05 240);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.15 0.03 240);
+  --muted-foreground: oklch(0.65 0.05 240);
+  --accent: oklch(0.75 0.3 200);
+  --accent-foreground: oklch(0.05 0.02 240);
+  --destructive: oklch(0.65 0.25 15);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.18 0.05 240);
+  --input: oklch(0.12 0.03 240);
+  --ring: oklch(0.75 0.3 200);
+  --chart-1: oklch(0.75 0.3 200);
+  --chart-2: oklch(0.7 0.25 260);
+  --chart-3: oklch(0.65 0.25 320);
+  --chart-4: oklch(0.75 0.25 40);
+  --chart-5: oklch(0.7 0.25 120);
+  --sidebar: oklch(0.08 0.03 240);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.75 0.3 200);
+  --sidebar-primary-foreground: oklch(0.05 0.02 240);
+  --sidebar-accent: oklch(0.12 0.05 240);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.18 0.05 240);
+  --sidebar-ring: oklch(0.75 0.3 200);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Tech colors */
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-cyan: var(--neon-cyan);
+  --color-tech-orange: var(--tech-orange);
+  --color-tech-green: var(--tech-green);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: var(--ring);
+    outline-width: 2px;
+    outline-offset: 2px;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Enhanced digital grid pattern with better visibility */
+  .digital-grid {
+    background-image: linear-gradient(rgba(0, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 255, 0.08) 1px, transparent 1px),
+      radial-gradient(circle at 25% 25%, rgba(0, 255, 255, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(138, 43, 226, 0.12) 0%, transparent 50%);
+    background-size: 60px 60px, 60px 60px, 400px 400px, 400px 400px;
+    animation: grid-pulse 8s ease-in-out infinite;
+  }
+
+  @keyframes grid-pulse {
+    0%,
+    100% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+
+  /* More visible circuit pattern overlay */
+  .circuit-pattern::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2300ffff' fill-opacity='0.12'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* Enhanced tech-focused utility classes with better visibility */
+.neon-text {
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+.tech-gradient {
+  background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue), var(--neon-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hologram-card {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 255, 255, 0.15) 0%,
+    rgba(138, 43, 226, 0.15) 50%,
+    rgba(255, 20, 147, 0.15) 100%
+  );
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.hologram-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+  animation: hologram-sweep 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes hologram-sweep {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+.neon-glow {
+  box-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 15px var(--neon-blue), 0 0 20px var(--neon-blue);
+  border: 1px solid var(--neon-blue);
+}
+
+.tech-button {
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.tech-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.tech-button:hover::before {
+  left: 100%;
+}
+
+.tech-button:hover {
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.data-stream {
+  background: linear-gradient(90deg, transparent 0%, var(--neon-cyan) 50%, transparent 100%);
+  height: 1px;
+  animation: data-flow 2s linear infinite;
+}
+
+@keyframes data-flow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Floating elements animation */
+.floating-element {
+  animation: float 6s ease-in-out infinite;
+}
+
+.floating-element:nth-child(2) {
+  animation-delay: -2s;
+}
+
+.floating-element:nth-child(3) {
+  animation-delay: -4s;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-20px) rotate(1deg);
+  }
+  66% {
+    transform: translateY(-10px) rotate(-1deg);
+  }
+}
