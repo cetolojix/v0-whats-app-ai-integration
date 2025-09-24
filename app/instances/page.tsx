@@ -32,7 +32,7 @@ export default async function InstancesPage() {
 
     return <WhatsAppInstanceManager user={user} profile={profile} instances={instances || []} />
   } catch (error) {
-    console.error("Supabase configuration error:", error)
+    console.error("[v0] Supabase configuration error:", error)
 
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -52,8 +52,8 @@ export default async function InstancesPage() {
             Supabase environment variables are missing. Please configure the following variables:
           </p>
           <div className="bg-muted rounded-md p-3 text-left text-sm font-mono mb-4">
-            <div>SUPABASE_URL</div>
-            <div>SUPABASE_ANON_KEY</div>
+            <div>NEXT_PUBLIC_SUPABASE_URL</div>
+            <div>NEXT_PUBLIC_SUPABASE_ANON_KEY</div>
           </div>
           <p className="text-sm text-muted-foreground">
             Contact your administrator to configure these environment variables.

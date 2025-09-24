@@ -209,6 +209,207 @@ export default async function HomePage() {
             </svg>
           </a>
         </div>
+
+        <div className="mt-32 space-y-12 relative">
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-px h-20 bg-gradient-to-b from-transparent to-neon-purple opacity-80"></div>
+
+          <div className="text-center space-y-6">
+            <h2 className="text-4xl md:text-5xl font-bold tech-gradient text-balance">Paket Seçenekleri</h2>
+            <p className="text-xl text-foreground/80 max-w-2xl mx-auto text-balance leading-relaxed">
+              İhtiyacınıza uygun paketi seçin ve
+              <span className="text-neon-cyan font-semibold"> dijital dönüşümünüzü başlatın.</span>
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+            {/* Starter Package */}
+            <div className="hologram-card p-8 rounded-3xl text-center space-y-6 relative group shadow-xl hover:shadow-2xl hover:shadow-neon-blue/20 transition-all duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-neon-blue to-neon-cyan rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-neon-blue/30">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-foreground">Starter</h3>
+                <div className="text-4xl font-bold neon-text">999 TL</div>
+                <div className="text-sm text-muted-foreground">/ aylık</div>
+              </div>
+
+              <div className="space-y-4 text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">1 WhatsApp hesabı</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">Aylık 2.000 mesaj</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">Temel raporlama</span>
+                </div>
+              </div>
+
+              <a
+                href="/auth/register"
+                className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-neon-blue to-neon-cyan text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-neon-blue/30 transition-all duration-300"
+              >
+                Başla
+              </a>
+            </div>
+
+            {/* Business Package */}
+            <div className="hologram-card p-8 rounded-3xl text-center space-y-6 relative group shadow-xl hover:shadow-2xl hover:shadow-neon-purple/20 transition-all duration-300 border-2 border-neon-purple/30">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-neon-purple to-tech-orange text-white px-4 py-1 rounded-full text-sm font-semibold">
+                Popüler
+              </div>
+
+              <div className="w-16 h-16 bg-gradient-to-br from-neon-purple to-tech-orange rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-neon-purple/30">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
+                </svg>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-foreground">Business</h3>
+                <div className="text-4xl font-bold text-neon-purple">2.490 TL</div>
+                <div className="text-sm text-muted-foreground">/ aylık</div>
+              </div>
+
+              <div className="space-y-4 text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-purple rounded-full"></div>
+                  <span className="text-foreground/80">3 hesap</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-purple rounded-full"></div>
+                  <span className="text-foreground/80">Aylık 10.000 mesaj</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-purple rounded-full"></div>
+                  <span className="text-foreground/80">Webhook/API entegrasyonu</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-purple rounded-full"></div>
+                  <span className="text-foreground/80">Temel AI yanıt sistemi</span>
+                </div>
+              </div>
+
+              <a
+                href="/auth/register"
+                className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-neon-purple to-tech-orange text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-neon-purple/30 transition-all duration-300"
+              >
+                Başla
+              </a>
+            </div>
+
+            {/* Agency Package */}
+            <div className="hologram-card p-8 rounded-3xl text-center space-y-6 relative group shadow-xl hover:shadow-2xl hover:shadow-tech-orange/20 transition-all duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-tech-orange to-neon-cyan rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-tech-orange/30">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-foreground">Agency</h3>
+                <div className="text-4xl font-bold text-tech-orange">6.990 TL</div>
+                <div className="text-sm text-muted-foreground">/ aylık</div>
+              </div>
+
+              <div className="space-y-4 text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-tech-orange rounded-full"></div>
+                  <span className="text-foreground/80">10 hesap</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-tech-orange rounded-full"></div>
+                  <span className="text-foreground/80">Aylık 50.000 mesaj</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-tech-orange rounded-full"></div>
+                  <span className="text-foreground/80">Gelişmiş raporlama + AI motoru</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-tech-orange rounded-full"></div>
+                  <span className="text-foreground/80">Çoklu kullanıcı paneli</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-tech-orange rounded-full"></div>
+                  <span className="text-foreground/80">Öncelikli destek</span>
+                </div>
+              </div>
+
+              <a
+                href="/auth/register"
+                className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-tech-orange to-neon-cyan text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-tech-orange/30 transition-all duration-300"
+              >
+                Başla
+              </a>
+            </div>
+
+            {/* Enterprise Package */}
+            <div className="hologram-card p-8 rounded-3xl text-center space-y-6 relative group shadow-xl hover:shadow-2xl hover:shadow-neon-cyan/20 transition-all duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-neon-cyan to-neon-purple rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-neon-cyan/30">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
+                </svg>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-foreground">Enterprise</h3>
+                <div className="text-3xl font-bold neon-text">Özel Teklif</div>
+                <div className="text-sm text-muted-foreground">/ özelleştirilmiş</div>
+              </div>
+
+              <div className="space-y-4 text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">Sınırsız hesap</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">&gt;100.000 mesaj</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">Özel sunucu / SLA anlaşması</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">Gelişmiş güvenlik</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full"></div>
+                  <span className="text-foreground/80">7/24 destek</span>
+                </div>
+              </div>
+
+              <a
+                href="/auth/register"
+                className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-neon-cyan/30 transition-all duration-300"
+              >
+                İletişime Geç
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

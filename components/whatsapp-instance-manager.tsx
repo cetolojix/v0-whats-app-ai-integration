@@ -126,8 +126,9 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
     setSelectedInstance(connectedInstanceName)
 
     setTimeout(() => {
+      console.log("[v0] Transitioning to connected state for:", connectedInstanceName)
       setCurrentStep("connected")
-    }, 5000) // Increased from 1000ms to 5000ms to allow workflow creation
+    }, 2000) // Reduced from 5000ms to 2000ms
   }
 
   const handleCreateNewInstance = () => {

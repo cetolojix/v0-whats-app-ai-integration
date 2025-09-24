@@ -41,11 +41,17 @@ export async function GET(request: NextRequest) {
 
     // If already connected, return status instead of QR
     if (statusData.instance?.state === "open") {
-      return NextResponse.json({
-        success: true,
-        status: "already_connected",
-        message: "Instance is already connected to WhatsApp",
-      })
+      console.log("[v0] Instance is already connected, returning success status")
+      return NextResponse.json(
+        {
+          success: true,
+          status: "already_connected",
+          message: "Instance is already connected to WhatsApp",
+          instanceName,
+          connected: true,
+        },
+        { status: 200 },
+      )
     }
 
     // Get QR code from Evolution API v2
