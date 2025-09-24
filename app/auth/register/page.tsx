@@ -12,6 +12,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 
+export const dynamic = "force-dynamic"
+
 export default function RegisterPage() {
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("") // Email alanı eklendi
