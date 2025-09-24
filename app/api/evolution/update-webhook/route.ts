@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { type NextRequest, NextResponse } from "next/server"
 
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"

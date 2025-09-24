@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { debugLog } from "@/lib/debug"
 
+export const dynamic = "force-dynamic"
+
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
 
 const POSSIBLE_API_KEYS = [

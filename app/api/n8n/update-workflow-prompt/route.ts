@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { type NextRequest, NextResponse } from "next/server"
 
 const N8N_API_URL = "https://n8nx.cetoloji.com"

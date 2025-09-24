@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { debugLog } from "@/lib/debug"
 
+export const dynamic = "force-dynamic"
+
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
 const EVOLUTION_API_KEY = "hvsctnOWysGzOGHea8tEzV2iHCGr9H4Ln8n"
 

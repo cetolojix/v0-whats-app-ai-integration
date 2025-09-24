@@ -18,6 +18,8 @@ interface ChatRequest {
 // In-memory conversation storage (in production, use a database)
 const conversations = new Map<string, ChatMessage[]>()
 
+export const dynamic = "force-dynamic"
+
 export async function POST(request: NextRequest) {
   try {
     const { instanceName, message, sender, conversationId, customPrompt, context }: ChatRequest = await request.json()
