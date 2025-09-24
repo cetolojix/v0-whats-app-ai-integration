@@ -27,6 +27,8 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
   const [countdown, setCountdown] = useState(60)
   const [retryCount, setRetryCount] = useState(0)
   const [isCleaningUp, setIsCleaningUp] = useState(false)
+  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false)
+  const [workflowError, setWorkflowError] = useState("")
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const t = getTranslation(language)
@@ -153,17 +155,9 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
           console.log(`[v0] Calling onConnected callback for ${instanceName}`)
           onConnected(instanceName)
 
-          setTimeout(() => {
-            createAutomationWorkflow()
-              .then(() => {
-                console.log("[v0] Workflow created successfully")
-              })
-              .catch((err) => {
-                console.error("[v0] Workflow creation failed:", err)
-                // Don't fail the connection if workflow creation fails
-                // The user can still use the instance manually
-              })
-          }, 2000) // Increased delay to ensure instance is fully ready
+          setTimeout(async () => {
+            await createAutomationWorkflow()
+          }, 3000) // Increased delay to ensure instance is fully ready
 
           return true
         } else if (response.ok && data.instance) {
@@ -183,16 +177,9 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             console.log(`[v0] Calling onConnected callback for ${instanceName}`)
             onConnected(instanceName)
 
-            setTimeout(() => {
-              createAutomationWorkflow()
-                .then(() => {
-                  console.log("[v0] Workflow created successfully")
-                })
-                .catch((err) => {
-                  console.error("[v0] Workflow creation failed:", err)
-                  // Don't fail the connection if workflow creation fails
-                })
-            }, 2000) // Increased delay
+            setTimeout(async () => {
+              await createAutomationWorkflow()
+            }, 3000)
 
             return true
           } else if (state === "close") {
@@ -263,6 +250,8 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
   const createAutomationWorkflow = async () => {
     try {
       console.log("[v0] Creating automation workflow for:", instanceName)
+      setIsCreatingWorkflow(true)
+      setWorkflowError("")
 
       const response = await fetch("/api/n8n/create-workflow", {
         method: "POST",
@@ -286,7 +275,11 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
       return data
     } catch (err) {
       console.error("[v0] Error creating workflow:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to create workflow"
+      setWorkflowError(errorMessage)
       return null
+    } finally {
+      setIsCreatingWorkflow(false)
     }
   }
 
@@ -421,43 +414,41 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                       {language === "tr" ? "Bağlandı!" : "Connected!"}
                     </p>
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
-                    {language === "tr" ? "AI otomasyonu kuruluyor..." : "Setting up AI automation..."}
-                  </p>
+                  {isCreatingWorkflow ? (
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      <RefreshCw className="h-3 w-3 animate-spin text-green-600" />
+                      <p className="text-xs text-green-600">
+                        {language === "tr" ? "AI otomasyonu kuruluyor..." : "Setting up AI automation..."}
+                      </p>
+                    </div>
+                  ) : workflowError ? (
+                    <p className="text-xs text-orange-600 mt-1">
+                      {language === "tr"
+                        ? "Otomasyon kurulumunda sorun oluştu, manuel olarak yapılandırabilirsiniz"
+                        : "Automation setup failed, you can configure it manually"}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-green-600 mt-1">
+                      {language === "tr" ? "AI otomasyonu hazır!" : "AI automation ready!"}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
           ) : null}
         </div>
 
-        {connectionStatus.status === "disconnected" && countdown > 0 && !error && (
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              {language === "tr" ? (
-                <>
-                  QR kod <span className="font-medium text-foreground">{countdown}</span> saniye içinde sona erecek
-                </>
-              ) : (
-                <>
-                  QR code expires in <span className="font-medium text-foreground">{countdown}</span> seconds
-                </>
-              )}
-            </p>
-          </div>
-        )}
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error}
-              {retryCount < maxRetries && (
-                <span className="block mt-1 text-xs">
-                  {language === "tr"
-                    ? `Otomatik yeniden deneniyor... (${retryCount}/${maxRetries})`
-                    : `Retrying automatically... (${retryCount}/${maxRetries})`}
-                </span>
-              )}
+        {workflowError && (
+          <Alert variant="default" className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              {language === "tr" ? "Otomasyon Uyarısı: " : "Automation Warning: "}
+              {workflowError}
+              <span className="block mt-1 text-xs">
+                {language === "tr"
+                  ? "WhatsApp bağlantısı başarılı, otomasyonu manuel olarak kurabilirsiniz."
+                  : "WhatsApp connection successful, you can set up automation manually."}
+              </span>
             </AlertDescription>
           </Alert>
         )}
