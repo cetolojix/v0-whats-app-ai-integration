@@ -31,29 +31,73 @@ export default async function AdminPage() {
   debugLog("[v0] Profile check:", { profile, profileError, userId: user.id })
 
   if (!profile || profile.role !== "admin") {
-    debugLog("[v0] User is not admin, redirecting to dashboard. Profile:", profile)
-    redirect("/dashboard")
+    debugLog("[v0] User is not admin, redirecting to instances. Profile:", profile)
+    redirect("/instances")
   }
 
   debugLog("[v0] User is admin, fetching data")
 
-  // Fetch all users and instances for admin
-  const { data: users, error: usersError } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false })
+  let users = []
+  let instances = []
 
-  const { data: instances, error: instancesError } = await supabase
-    .from("admin_instances_view")
-    .select("*")
-    .order("created_at", { ascending: false })
+  try {
+    // Fetch all users and instances for admin
+    const { data: usersData, error: usersError } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (usersError) {
+      debugLog("[v0] Error fetching users:", usersError)
+    } else {
+      users = usersData || []
+    }
+
+    // Try to fetch from admin view, fallback to regular instances table
+    const { data: instancesData, error: instancesError } = await supabase
+      .from("admin_instances_view")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (instancesError) {
+      debugLog("[v0] Error fetching from admin view, trying regular instances:", instancesError)
+
+      // Fallback to regular instances table with manual join
+      const { data: fallbackInstances, error: fallbackError } = await supabase
+        .from("instances")
+        .select(`
+          *,
+          profiles!instances_user_id_fkey (
+            email,
+            full_name,
+            role
+          )
+        `)
+        .order("created_at", { ascending: false })
+
+      if (fallbackError) {
+        debugLog("[v0] Error fetching instances fallback:", fallbackError)
+      } else {
+        // Transform the data to match expected format
+        instances =
+          fallbackInstances?.map((instance) => ({
+            ...instance,
+            user_email: instance.profiles?.email,
+            user_full_name: instance.profiles?.full_name,
+            user_role: instance.profiles?.role,
+          })) || []
+      }
+    } else {
+      instances = instancesData || []
+    }
+  } catch (error) {
+    debugLog("[v0] Unexpected error fetching data:", error)
+  }
 
   debugLog("[v0] Data fetched:", {
-    usersCount: users?.length,
-    instancesCount: instances?.length,
-    usersError,
-    instancesError,
+    usersCount: users.length,
+    instancesCount: instances.length,
   })
 
-  return <AdminDashboard users={users || []} instances={instances || []} currentUser={user} />
+  return <AdminDashboard users={users} instances={instances} currentUser={user} />
 }

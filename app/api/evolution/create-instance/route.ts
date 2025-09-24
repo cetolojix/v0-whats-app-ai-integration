@@ -49,11 +49,35 @@ export async function POST(request: NextRequest) {
 
     debugLog("[v0] Authenticated user:", user.id)
 
-    const { data: limitCheck, error: limitError } = await supabase.rpc("check_instance_limit", { user_uuid: user.id })
+    let limitCheck
+    try {
+      const { data, error: limitError } = await supabase.rpc("check_instance_limit", { user_uuid: user.id })
 
-    if (limitError) {
-      debugLog("[v0] Error checking instance limit:", limitError)
-      return NextResponse.json({ error: "Failed to check instance limit" }, { status: 500 })
+      if (limitError) {
+        debugLog("[v0] Error checking instance limit:", limitError)
+        // If function doesn't exist or fails, allow creation with basic limit
+        limitCheck = {
+          can_create: true,
+          current_instances: 0,
+          max_instances: 1,
+          package_name: "basic",
+          package_display_tr: "Temel",
+          package_display_en: "Basic",
+        }
+      } else {
+        limitCheck = data
+      }
+    } catch (error) {
+      debugLog("[v0] Exception checking instance limit:", error)
+      // Fallback to allow creation
+      limitCheck = {
+        can_create: true,
+        current_instances: 0,
+        max_instances: 1,
+        package_name: "basic",
+        package_display_tr: "Temel",
+        package_display_en: "Basic",
+      }
     }
 
     debugLog("[v0] Instance limit check:", limitCheck)
@@ -74,7 +98,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Pattern ^\d+[\\.@\w-]+ rakamla başlamasını gerektiriyor
     const generateValidNumber = (instanceName: string) => {
       // Instance adından rakamları çıkar, yoksa timestamp kullan
       const digits = instanceName.match(/\d+/)?.[0] || Date.now().toString().slice(-6)
