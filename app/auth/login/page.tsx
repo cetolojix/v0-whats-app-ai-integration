@@ -31,6 +31,18 @@ export default function LoginPage() {
     return () => clearTimeout(timer)
   }, [countdown])
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const errorParam = urlParams.get("error")
+
+    if (errorParam === "database_not_configured") {
+      setError("Sistem yapılandırması eksik. Environment variables ayarlanmamış.")
+      setSupabaseAvailable(false)
+    } else if (errorParam === "not_authenticated") {
+      setError("Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.")
+    }
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -64,6 +76,12 @@ export default function LoginPage() {
           setShowResendConfirmation(true)
         } else if (error.message === "Invalid login credentials") {
           setError("Email veya şifre hatalı. Lütfen tekrar deneyin.")
+
+          if (email === "admin@whatsapp-ai.com") {
+            setError(
+              "Admin kullanıcısı bulunamadı. Admin hesabı oluşturmak için 'Admin Hesabı Oluştur' butonuna tıklayın.",
+            )
+          }
         } else {
           setError(error.message)
         }
@@ -156,6 +174,39 @@ export default function LoginPage() {
     }
   }
 
+  const handleCreateAdmin = async () => {
+    if (email !== "admin@whatsapp-ai.com") {
+      setError("Bu özellik sadece admin email adresi için kullanılabilir.")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch("/api/auth/create-admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password || "admin123", // Default password if not provided
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setError("Admin hesabı oluşturuldu! Şimdi giriş yapabilirsiniz.")
+      } else {
+        setError(data.error || "Admin hesabı oluşturulamadı.")
+      }
+    } catch (error) {
+      setError("Admin hesabı oluşturulamadı. Lütfen tekrar deneyin.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
@@ -205,6 +256,18 @@ export default function LoginPage() {
                             Admin Email Doğrula
                           </Button>
                         )}
+                      {error.includes("Admin kullanıcısı bulunamadı") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 w-full bg-transparent"
+                          onClick={handleCreateAdmin}
+                          disabled={isLoading}
+                        >
+                          Admin Hesabı Oluştur
+                        </Button>
+                      )}
                       {showResendConfirmation && email !== "admin@whatsapp-ai.com" && supabaseAvailable && (
                         <Button
                           type="button"
@@ -224,13 +287,31 @@ export default function LoginPage() {
                   </Button>
                   {!supabaseAvailable && (
                     <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
-                      <p>Sistem yapılandırması tamamlanmamış. Lütfen aşağıdaki environment variable'ları ayarlayın:</p>
-                      <ul className="mt-2 text-xs list-disc list-inside">
-                        <li>SUPABASE_URL</li>
-                        <li>NEXT_PUBLIC_SUPABASE_URL</li>
-                        <li>SUPABASE_ANON_KEY</li>
-                        <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+                      <p className="font-medium">Sistem yapılandırması tamamlanmamış</p>
+                      <p className="mt-1">Lütfen aşağıdaki environment variable'ları sunucunuzda ayarlayın:</p>
+                      <ul className="mt-2 text-xs list-disc list-inside space-y-1">
+                        <li>
+                          <code>SUPABASE_URL</code> - Supabase proje URL'i
+                        </li>
+                        <li>
+                          <code>NEXT_PUBLIC_SUPABASE_URL</code> - Supabase proje URL'i (public)
+                        </li>
+                        <li>
+                          <code>SUPABASE_ANON_KEY</code> - Supabase anon key
+                        </li>
+                        <li>
+                          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> - Supabase anon key (public)
+                        </li>
                       </ul>
+                      <div className="mt-3 p-2 bg-amber-100 rounded text-xs">
+                        <p className="font-medium">Supabase bilgilerinizi nasıl bulabilirsiniz:</p>
+                        <ol className="mt-1 list-decimal list-inside space-y-1">
+                          <li>Supabase dashboard'a gidin</li>
+                          <li>Projenizi seçin</li>
+                          <li>Settings → API'ye gidin</li>
+                          <li>URL ve anon key'i kopyalayın</li>
+                        </ol>
+                      </div>
                     </div>
                   )}
                 </div>

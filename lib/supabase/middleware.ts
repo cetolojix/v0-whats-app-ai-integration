@@ -13,7 +13,13 @@ export async function updateSession(request: NextRequest) {
       hasUrl: !!process.env.SUPABASE_URL,
       hasPublicKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       hasKey: !!process.env.SUPABASE_ANON_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      allEnvKeys: Object.keys(process.env).filter((key) => key.includes("SUPABASE")),
     })
+
+    if (request.nextUrl.pathname.startsWith("/auth/login")) {
+      return NextResponse.next({ request })
+    }
 
     if (
       request.nextUrl.pathname.startsWith("/admin") ||
@@ -22,6 +28,7 @@ export async function updateSession(request: NextRequest) {
     ) {
       const url = request.nextUrl.clone()
       url.pathname = "/auth/login"
+      url.searchParams.set("error", "database_not_configured")
       return NextResponse.redirect(url)
     }
 
@@ -66,6 +73,7 @@ export async function updateSession(request: NextRequest) {
     ) {
       const url = request.nextUrl.clone()
       url.pathname = "/auth/login"
+      url.searchParams.set("error", "not_authenticated")
       return NextResponse.redirect(url)
     }
 
