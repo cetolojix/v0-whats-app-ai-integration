@@ -33,18 +33,11 @@ export async function POST(request: NextRequest) {
     console.log("[v0] User created successfully:", authData.user.id)
 
     try {
-      const { error: profileError } = await supabase.from("user_profiles").insert({
-        user_id: authData.user.id,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: authData.user.id, // Added id field to match profiles table schema
         email: formData.email,
-        phone: formData.phone,
-        company: formData.company || null,
-        address: formData.address || null,
-        city: formData.city || null,
-        postal_code: formData.postalCode || null,
-        selected_package: formData.selectedPackage,
-        created_at: new Date().toISOString(),
+        full_name: `${formData.firstName} ${formData.lastName}`, // Changed to full_name to match schema
+        role: "user", // Added role field as required by profiles table
       })
 
       if (profileError) {
