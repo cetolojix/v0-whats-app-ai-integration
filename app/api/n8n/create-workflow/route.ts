@@ -11,14 +11,59 @@ const OPENAI_API_KEY =
   process.env.OPENAI_API_KEY ||
   "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"
 
+interface WorkflowNode {
+  parameters: Record<string, unknown>
+  id: string
+  name: string
+  type: string
+  typeVersion: number
+  position: [number, number]
+  webhookId?: string
+  credentials?: Record<string, unknown>
+}
+
+interface WorkflowConnection {
+  main?: Array<
+    Array<{
+      node: string
+      type: string
+      index: number
+    }>
+  >
+  ai_languageModel?: Array<
+    Array<{
+      node: string
+      type: string
+      index: number
+    }>
+  >
+  ai_memory?: Array<
+    Array<{
+      node: string
+      type: string
+      index: number
+    }>
+  >
+}
+
 interface WorkflowTemplate {
   name: string
-  nodes: any[]
-  connections: any
-  settings: any
+  nodes: WorkflowNode[]
+  connections: Record<string, WorkflowConnection>
+  settings: Record<string, unknown>
   active?: boolean
-  pinData?: any
-  meta?: any
+  pinData?: Record<string, unknown>
+  meta?: Record<string, unknown>
+}
+
+interface CredentialData {
+  id: string
+  name: string
+  type: string
+}
+
+interface ApiResponse {
+  data?: CredentialData[]
 }
 
 export async function POST(request: NextRequest) {
@@ -191,9 +236,9 @@ async function findExistingCredentials(instanceName: string): Promise<string> {
     })
 
     if (response.ok) {
-      const data = await response.json()
+      const data: ApiResponse = await response.json()
       const existingCredential = data.data?.find(
-        (cred: any) => cred.name === `Evolution API - ${instanceName}` || cred.type === "httpHeaderAuth",
+        (cred: CredentialData) => cred.name === `Evolution API - ${instanceName}` || cred.type === "httpHeaderAuth",
       )
 
       if (existingCredential) {

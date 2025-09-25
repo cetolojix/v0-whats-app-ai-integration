@@ -33,8 +33,8 @@ interface AuditLog {
   user_id: string
   admin_user_id: string | null
   operation_type: string
-  old_values: any
-  new_values: any
+  old_values: Record<string, unknown>
+  new_values: Record<string, unknown>
   description: string
   ip_address: string | null
   user_agent: string | null
@@ -58,7 +58,7 @@ interface ActivityLog {
   resource_type: string
   resource_id: string | null
   description: string
-  metadata: any
+  metadata: Record<string, unknown>
   ip_address: string | null
   user_agent: string | null
   created_at: string
@@ -82,6 +82,18 @@ interface UserSession {
   user?: {
     email: string
   }
+}
+
+interface AdminInstancesViewItem {
+  id: string
+  user_id: string
+  instance_name: string
+  status: string
+  workflow_name: string | null
+  created_at: string
+  updated_at: string
+  user_email: string
+  user_full_name: string | null
 }
 
 export default function AdminActivityMonitor() {
@@ -176,7 +188,7 @@ export default function AdminActivityMonitor() {
       if (instancesError) {
         console.error("[v0] Error fetching instances:", instancesError)
       } else {
-        const transformedInstances = (instancesData || []).map((item: any) => ({
+        const transformedInstances = (instancesData || []).map((item: AdminInstancesViewItem) => ({
           id: item.id,
           user_id: item.user_id,
           instance_name: item.instance_name,
@@ -284,7 +296,7 @@ export default function AdminActivityMonitor() {
   })
 
   const exportLogs = async (type: "audit" | "activity" | "instances") => {
-    let data: any[] = []
+    let data: Record<string, unknown>[] = []
 
     if (type === "audit") {
       data = filteredAuditLogs
