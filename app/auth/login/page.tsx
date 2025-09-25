@@ -14,24 +14,12 @@ import { useState } from "react"
 export const dynamic = "force-dynamic"
 
 export default function LoginPage() {
-  const [phone, setPhone] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [supabaseAvailable, setSupabaseAvailable] = useState(true)
   const router = useRouter()
-
-  const formatPhoneNumber = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, "")
-    if (cleaned.startsWith("0")) {
-      return "+90" + cleaned.substring(1)
-    } else if (cleaned.startsWith("90")) {
-      return "+" + cleaned
-    } else if (cleaned.length === 10) {
-      return "+90" + cleaned
-    }
-    return phone
-  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +27,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log("[v0] Attempting login with phone:", phone)
+      console.log("[v0] Attempting login with username:", username)
 
       const supabase = createClient()
       if (!supabase) {
@@ -51,12 +39,12 @@ export default function LoginPage() {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("email")
-        .eq("phone", formatPhoneNumber(phone))
+        .eq("username", username)
         .single()
 
       if (profileError || !profileData) {
-        console.log("[v0] Profile not found for phone:", phone)
-        setError("Bu telefon numarası ile kayıtlı kullanıcı bulunamadı.")
+        console.log("[v0] Profile not found for username:", username)
+        setError("Bu kullanıcı adı ile kayıtlı kullanıcı bulunamadı.")
         return
       }
 
@@ -71,7 +59,7 @@ export default function LoginPage() {
         console.log("[v0] Login error:", error.message)
 
         if (error.message === "Invalid login credentials") {
-          setError("Telefon numarası veya şifre hatalı. Lütfen tekrar deneyin.")
+          setError("Kullanıcı adı veya şifre hatalı. Lütfen tekrar deneyin.")
         } else {
           setError(error.message)
         }
@@ -100,20 +88,20 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Giriş Yap</CardTitle>
-              <CardDescription>Hesabınıza giriş yapmak için telefon numaranız ve şifrenizi girin</CardDescription>
+              <CardDescription>Hesabınıza giriş yapmak için kullanıcı adınız ve şifrenizi girin</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
-                    <Label htmlFor="phone">Telefon Numarası</Label>
+                    <Label htmlFor="username">Kullanıcı Adı</Label>
                     <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="05XXXXXXXXX"
+                      id="username"
+                      type="text"
+                      placeholder="kullaniciadi"
                       required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                     />
                   </div>
                   <div className="grid gap-2">

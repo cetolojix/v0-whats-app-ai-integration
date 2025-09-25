@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client"
 export const dynamic = "force-dynamic"
 
 export default function RegisterPage() {
+  const [username, setUsername] = useState("")
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -96,6 +97,21 @@ export default function RegisterPage() {
       return
     }
 
+    if (!username.trim()) {
+      setError("Kullanıcı adı gereklidir")
+      return
+    }
+
+    if (username.length < 3) {
+      setError("Kullanıcı adı en az 3 karakter olmalıdır")
+      return
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setError("Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir")
+      return
+    }
+
     const formattedPhone = formatPhoneNumber(phone)
     if (!formattedPhone.match(/^\+90\d{10}$/)) {
       setError("Geçerli bir Türkiye telefon numarası girin (örn: 05XXXXXXXXX)")
@@ -106,9 +122,24 @@ export default function RegisterPage() {
     setError("")
     setMessage("")
 
-    console.log("[v0] Starting registration with phone:", formattedPhone)
+    console.log("[v0] Starting registration with phone:", formattedPhone, "and username:", username)
 
     try {
+      const supabase = createClient()
+      if (supabase) {
+        const { data: existingUser, error: checkError } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("username", username)
+          .single()
+
+        if (existingUser) {
+          setError("Bu kullanıcı adı zaten kullanılıyor")
+          setLoading(false)
+          return
+        }
+      }
+
       const codeSent = await sendVerificationCode()
       if (codeSent) {
         setStep("verify")
@@ -149,6 +180,7 @@ export default function RegisterPage() {
           fullName: fullName,
           email: phoneEmail,
           password: password,
+          username: username,
         }),
       })
 
@@ -243,6 +275,19 @@ export default function RegisterPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Kullanıcı Adı</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="kullaniciadi"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
+                />
+                <p className="text-xs text-gray-500">En az 3 karakter, sadece harf, rakam ve alt çizgi</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefon Numarası</Label>

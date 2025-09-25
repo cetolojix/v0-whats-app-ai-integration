@@ -6,13 +6,13 @@ import { getStoredVerificationCode, deleteVerificationCode } from "@/lib/verific
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, code, fullName, email, password } = await request.json()
+    const { phone, code, fullName, email, password, username } = await request.json()
 
     if (!phone || !code) {
       return NextResponse.json({ error: "Telefon numarası ve kod gerekli" }, { status: 400 })
     }
 
-    console.log("[v0] Verifying SMS code:", code, "for phone:", phone, "with email:", email)
+    console.log("[v0] Verifying SMS code:", code, "for phone:", phone, "with email:", email, "and username:", username)
 
     const storedData = getStoredVerificationCode(phone)
 
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
             user_metadata: {
               full_name: fullName,
               phone: phone,
+              username: username,
             },
           })
 
@@ -82,7 +83,8 @@ export async function POST(request: NextRequest) {
                   id: authData.user.id,
                   email: email,
                   full_name: fullName,
-                  phone: phone, // Store phone number for login lookup
+                  phone: phone,
+                  username: username,
                   role: "user",
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
