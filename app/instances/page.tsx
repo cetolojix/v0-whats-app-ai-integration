@@ -1,5 +1,3 @@
-"use client"
-
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { WhatsAppInstanceManager } from "@/components/whatsapp-instance-manager"
@@ -32,12 +30,12 @@ export default async function InstancesPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Contact your administrator to configure these environment variables.
           </p>
-          <button
-            onClick={() => (window.location.href = "/")}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          <a
+            href="/"
+            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             Go to Home
-          </button>
+          </a>
         </div>
       </div>
     )
@@ -89,12 +87,12 @@ export default async function InstancesPage() {
           <p className="text-muted-foreground mb-4">
             There was an error accessing your account. Please try logging in again.
           </p>
-          <button
-            onClick={() => (window.location.href = "/auth/login")}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          <a
+            href="/auth/login"
+            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             Go to Login
-          </button>
+          </a>
         </div>
       </div>
     )
