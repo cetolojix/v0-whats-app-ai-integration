@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { generateText } from "ai"
+import { groq } from "@ai-sdk/groq"
 
 interface ChatMessage {
   role: "system" | "user" | "assistant"
@@ -22,14 +24,19 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[v0] AI chat API called")
+
     const { instanceName, message, sender, conversationId, customPrompt, context }: ChatRequest = await request.json()
+    console.log("[v0] Request data:", { instanceName, message: message.substring(0, 50), sender })
 
     if (!instanceName || !message || !sender) {
+      console.log("[v0] Missing required fields")
       return NextResponse.json({ error: "Missing required fields: instanceName, message, sender" }, { status: 400 })
     }
 
     // Generate conversation ID if not provided
     const convId = conversationId || `${instanceName}-${sender}`
+    console.log("[v0] Using conversation ID:", convId)
 
     // Get or create conversation history
     const conversationHistory = conversations.get(convId) || []
@@ -51,8 +58,11 @@ export async function POST(request: NextRequest) {
       ...conversationHistory.slice(-10), // Keep last 10 messages for context
     ]
 
-    // Generate AI response
+    console.log("[v0] Prepared messages for AI:", messages.length)
+
+    // Generate AI response using AI SDK
     const aiResponse = await generateAIResponse(messages)
+    console.log("[v0] AI response generated:", aiResponse.substring(0, 50))
 
     // Add AI response to history
     const assistantMessage: ChatMessage = {
@@ -65,25 +75,53 @@ export async function POST(request: NextRequest) {
     // Store updated conversation (limit to last 20 messages)
     conversations.set(convId, conversationHistory.slice(-20))
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       response: aiResponse,
       conversationId: convId,
       messageCount: conversationHistory.length,
       timestamp: Date.now(),
-    })
+    }
+
+    console.log("[v0] Returning successful response")
+    return NextResponse.json(responseData)
   } catch (error) {
-    console.error("AI chat error:", error)
+    console.error("[v0] AI chat error:", error)
 
     const errorMessage = error instanceof Error ? error.message : "Failed to generate AI response"
 
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        details: "Please check AI service configuration",
-      },
-      { status: 500 },
-    )
+    const errorResponse = {
+      error: errorMessage,
+      details: "Please check AI service configuration",
+      timestamp: Date.now(),
+    }
+
+    console.log("[v0] Returning error response:", errorResponse)
+    return NextResponse.json(errorResponse, { status: 500 })
+  }
+}
+
+// Get conversation history
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const conversationId = searchParams.get("conversationId")
+
+    if (!conversationId) {
+      return NextResponse.json({ error: "Conversation ID is required" }, { status: 400 })
+    }
+
+    const history = conversations.get(conversationId) || []
+
+    return NextResponse.json({
+      success: true,
+      conversationId,
+      messages: history,
+      messageCount: history.length,
+    })
+  } catch (error) {
+    console.error("Error fetching conversation:", error)
+    return NextResponse.json({ error: "Failed to fetch conversation" }, { status: 500 })
   }
 }
 
@@ -116,39 +154,24 @@ Instance: ${instanceName}`
 
 async function generateAIResponse(messages: ChatMessage[]): Promise<string> {
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        max_tokens: 150,
-        temperature: 0.7,
-      }),
+    console.log("[v0] Generating AI response using AI SDK with Groq")
+
+    const prompt = messages.map((msg) => `${msg.role}: ${msg.content}`).join("\n\n")
+    console.log("[v0] Prepared prompt for Groq:", prompt.substring(0, 100))
+
+    const { text } = await generateText({
+      model: groq("llama-3.3-70b-versatile"), // Updated to correct model version
+      prompt: prompt, // Using prompt instead of messages
+      maxTokens: 150,
+      temperature: 0.7,
     })
 
-    console.log("[v0] OpenAI response status:", response.status)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.log("[v0] OpenAI error:", errorText)
-      throw new Error(`OpenAI API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log("[v0] OpenAI response:", JSON.stringify(data, null, 2))
-
-    return data.choices[0]?.message?.content || "I apologize, but I cannot generate a response right now."
+    console.log("[v0] AI SDK response generated successfully")
+    return text || "I apologize, but I cannot generate a response right now."
   } catch (error) {
     console.error("[v0] Error generating AI response:", error)
 
-    // Fallback to mock responses if OpenAI fails
+    // Fallback to mock responses if AI SDK fails
     const lastMessage = messages[messages.length - 1]?.content.toLowerCase() || ""
 
     if (lastMessage.includes("hello") || lastMessage.includes("hi") || lastMessage.includes("hey")) {
@@ -177,29 +200,5 @@ async function generateAIResponse(messages: ChatMessage[]): Promise<string> {
       lastMessage.substring(0, 50) +
       "... Let me help you with that. Could you provide a bit more detail so I can give you the most accurate information?"
     )
-  }
-}
-
-// Get conversation history
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const conversationId = searchParams.get("conversationId")
-
-    if (!conversationId) {
-      return NextResponse.json({ error: "Conversation ID is required" }, { status: 400 })
-    }
-
-    const history = conversations.get(conversationId) || []
-
-    return NextResponse.json({
-      success: true,
-      conversationId,
-      messages: history,
-      messageCount: history.length,
-    })
-  } catch (error) {
-    console.error("Error fetching conversation:", error)
-    return NextResponse.json({ error: "Failed to fetch conversation" }, { status: 500 })
   }
 }

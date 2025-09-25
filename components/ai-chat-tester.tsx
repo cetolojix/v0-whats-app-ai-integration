@@ -43,6 +43,8 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
     setError("")
 
     try {
+      console.log("[v0] Sending message to AI chat API:", currentMessage)
+
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: {
@@ -56,7 +58,18 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
         }),
       })
 
+      console.log("[v0] AI chat API response status:", response.status)
+      console.log("[v0] AI chat API response headers:", Object.fromEntries(response.headers.entries()))
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const textResponse = await response.text()
+        console.error("[v0] Non-JSON response received:", textResponse)
+        throw new Error(`Server returned non-JSON response: ${textResponse.substring(0, 100)}...`)
+      }
+
       const data = await response.json()
+      console.log("[v0] AI chat API response data:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to get AI response")
@@ -71,6 +84,7 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
       setMessages((prev) => [...prev, aiMessage])
       setConversationId(data.conversationId)
     } catch (err) {
+      console.error("[v0] Error in sendMessage:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to send message"
       setError(errorMessage)
     } finally {
@@ -98,14 +112,14 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
           <div>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              AI Chat Tester
+              AI Sohbet Testi
             </CardTitle>
-            <CardDescription>Test AI responses for "{instanceName}"</CardDescription>
+            <CardDescription>"{instanceName}" için AI yanıtlarını test edin</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1">
               <Bot className="h-3 w-3" />
-              {messages.filter((m) => m.role === "assistant").length} responses
+              {messages.filter((m) => m.role === "assistant").length} yanıt
             </Badge>
             <Button onClick={clearChat} variant="outline" size="sm" disabled={messages.length === 0}>
               <Trash2 className="h-4 w-4" />
@@ -121,9 +135,9 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
             <div className="flex items-center justify-center h-full text-center">
               <div>
                 <Bot className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">Start a Conversation</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">Sohbete Başlayın</h3>
                 <p className="text-sm text-muted-foreground">
-                  Send a message to test how your AI assistant responds to different types of inquiries.
+                  AI asistanınızın farklı sorulara nasıl yanıt verdiğini test etmek için bir mesaj gönderin.
                 </p>
               </div>
             </div>
@@ -163,7 +177,7 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
                     <div className="rounded-lg px-3 py-2 bg-muted">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                        <span className="text-sm text-muted-foreground">AI düşünüyor...</span>
                       </div>
                     </div>
                   </div>
@@ -182,7 +196,7 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
         {/* Message Input */}
         <div className="flex gap-2">
           <Textarea
-            placeholder="Type your message here... (Press Enter to send)"
+            placeholder="Mesajınızı buraya yazın... (Göndermek için Enter'a basın)"
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -195,7 +209,7 @@ export function AIChatTester({ instanceName }: AIChatTesterProps) {
         </div>
 
         <div className="text-xs text-muted-foreground text-center">
-          This is a test environment. Messages are not sent to actual WhatsApp users.
+          Bu bir test ortamıdır. Mesajlar gerçek WhatsApp kullanıcılarına gönderilmez.
         </div>
       </CardContent>
     </Card>
