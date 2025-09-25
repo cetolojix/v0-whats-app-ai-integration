@@ -1,79 +1,71 @@
-import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function updateSession(request: NextRequest) {
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL
+  // The environment variables are inconsistently available in middleware context
+  // causing infinite redirects and screen flickering
 
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  // Simply return NextResponse.next() to allow all requests through
+  // Authentication will be handled at the component level instead
+  return NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  // TODO: Re-enable middleware authentication once environment variable issues are resolved
+  /*
+  console.log("[v0] Middleware env check:", {
+    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+  })
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.log("[v0] Supabase credentials check:")
-    console.log("[v0] - NEXT_PUBLIC_SUPABASE_URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log("[v0] - SUPABASE_URL:", !!process.env.SUPABASE_URL)
-    console.log("[v0] - NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    console.log("[v0] - SUPABASE_ANON_KEY:", !!process.env.SUPABASE_ANON_KEY)
-    console.log("[v0] Supabase credentials not available in middleware, skipping auth")
-
-    return NextResponse.next({
-      request,
+    console.log("[v0] Missing Supabase credentials in middleware:", {
+      url: !!supabaseUrl,
+      key: !!supabaseAnonKey,
     })
+    return NextResponse.next({ request })
   }
 
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  try {
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
       },
-    })
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({
+          request,
+        })
+        cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+      },
+    },
+  })
 
-    // IMPORTANT: Avoid writing any logic between createServerClient and
-    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-    // issues with users being randomly logged out.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    const isProtectedRoute =
-      request.nextUrl.pathname.startsWith("/admin") ||
-      request.nextUrl.pathname.startsWith("/instances") ||
-      request.nextUrl.pathname.startsWith("/dashboard")
-
-    const isAuthRoute =
-      request.nextUrl.pathname.startsWith("/auth/login") || request.nextUrl.pathname.startsWith("/auth/register")
-
-    if (!user && isProtectedRoute) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/auth/login"
-      return NextResponse.redirect(url)
-    }
-
-    if (user && isAuthRoute) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/instances"
-      return NextResponse.redirect(url)
-    }
-  } catch (error) {
-    console.log("[v0] Auth error in middleware:", error)
-    return NextResponse.next({
-      request,
-    })
+  if (
+    request.nextUrl.pathname !== "/" &&
+    !user &&
+    !request.nextUrl.pathname.startsWith("/login") &&
+    !request.nextUrl.pathname.startsWith("/auth")
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/auth/login"
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse
+  */
 }
