@@ -33,20 +33,9 @@ interface PackageInfo {
   subscription_status: string
 }
 
-interface User {
-  id: string
-  email: string
-}
-
-interface Profile {
-  id: string
-  full_name: string | null
-  role: string
-}
-
 interface UserDashboardProps {
-  user: User
-  profile: Profile
+  user: any
+  profile: any
   instances: Instance[]
 }
 

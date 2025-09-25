@@ -6,10 +6,6 @@ import { debugLog } from "@/lib/debug"
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  if (!supabase) {
-    throw new Error("Supabase client could not be initialized. Please check your environment variables.")
-  }
-
   debugLog("[v0] Admin page accessed")
 
   // Check if user is authenticated
@@ -20,8 +16,8 @@ export default async function AdminPage() {
 
   debugLog("[v0] User authentication check:", { user: user?.email, error })
 
-  if (error || !user || !user.email) {
-    debugLog("[v0] User not authenticated or missing email, redirecting to login")
+  if (error || !user) {
+    debugLog("[v0] User not authenticated, redirecting to login")
     redirect("/auth/login")
   }
 
@@ -103,11 +99,5 @@ export default async function AdminPage() {
     instancesCount: instances.length,
   })
 
-  const currentUser = {
-    id: user.id,
-    email: user.email, // Now guaranteed to be string, not string | undefined
-    role: profile.role,
-  }
-
-  return <AdminDashboard users={users} instances={instances} currentUser={currentUser} />
+  return <AdminDashboard users={users} instances={instances} currentUser={user} />
 }

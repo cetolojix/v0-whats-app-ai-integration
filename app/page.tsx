@@ -41,7 +41,7 @@ export default async function HomePage() {
   // Show landing page for unauthenticated users or when Supabase is not configured
   return (
     <div className="min-h-screen bg-background digital-grid relative">
-      <div className="circuit-pattern absolute inset-0 pointer-events-none" suppressHydrationWarning />
+      <div className="circuit-pattern absolute inset-0 pointer-events-none" />
 
       {/* Navigation */}
       <nav className="border-b border-border/50 backdrop-blur-sm bg-background/90 sticky top-0 z-50 relative">
@@ -71,18 +71,9 @@ export default async function HomePage() {
       </nav>
 
       <div className="container mx-auto px-6 py-20 relative z-10">
-        <div
-          className="absolute top-20 left-10 w-4 h-4 bg-neon-cyan rounded-full floating-element opacity-80 shadow-lg shadow-neon-cyan/50"
-          suppressHydrationWarning
-        ></div>
-        <div
-          className="absolute top-40 right-20 w-6 h-6 border-2 border-neon-purple rounded-full floating-element opacity-70 shadow-lg shadow-neon-purple/30"
-          suppressHydrationWarning
-        ></div>
-        <div
-          className="absolute bottom-40 left-1/4 w-3 h-3 bg-tech-orange rounded-full floating-element opacity-80 shadow-lg shadow-tech-orange/50"
-          suppressHydrationWarning
-        ></div>
+        <div className="absolute top-20 left-10 w-4 h-4 bg-neon-cyan rounded-full floating-element opacity-80 shadow-lg shadow-neon-cyan/50"></div>
+        <div className="absolute top-40 right-20 w-6 h-6 border-2 border-neon-purple rounded-full floating-element opacity-70 shadow-lg shadow-neon-purple/30"></div>
+        <div className="absolute bottom-40 left-1/4 w-3 h-3 bg-tech-orange rounded-full floating-element opacity-80 shadow-lg shadow-tech-orange/50"></div>
 
         <div className="text-center space-y-12 max-w-5xl mx-auto">
           <div className="space-y-8">

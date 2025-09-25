@@ -60,16 +60,10 @@ interface Instance {
   user_role: string
 }
 
-interface CurrentUser {
-  id: string
-  email: string
-  role: string
-}
-
 interface AdminDashboardProps {
   users: Profile[]
   instances: Instance[]
-  currentUser: CurrentUser
+  currentUser: any
 }
 
 export function AdminDashboard({ users, instances, currentUser }: AdminDashboardProps) {

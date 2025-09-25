@@ -6,10 +6,6 @@ import { redirect } from "next/navigation"
 export async function deleteInstance(instanceName: string) {
   const supabase = await createClient()
 
-  if (!supabase) {
-    throw new Error("Failed to initialize Supabase client")
-  }
-
   const {
     data: { user },
     error: userError,
