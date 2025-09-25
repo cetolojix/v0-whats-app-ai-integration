@@ -179,14 +179,15 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
 
           console.log(`[v0] Calling onConnected callback for ${instanceName}`)
 
+          setIsConnectionComplete(true)
+          onConnected(instanceName, true)
+
+          // Try to create workflow but don't block the connection completion
           try {
             await createAutomationWorkflow()
-            setIsConnectionComplete(true)
-            onConnected(instanceName, true)
           } catch (err) {
             console.error("[v0] Workflow creation failed, but connection successful:", err)
-            setIsConnectionComplete(true)
-            onConnected(instanceName, true)
+            // Connection is still successful even if workflow fails
           }
 
           return true
@@ -206,14 +207,15 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
 
             console.log(`[v0] Calling onConnected callback for ${instanceName}`)
 
+            setIsConnectionComplete(true)
+            onConnected(instanceName, true)
+
+            // Try to create workflow but don't block the connection completion
             try {
               await createAutomationWorkflow()
-              setIsConnectionComplete(true)
-              onConnected(instanceName, true)
             } catch (err) {
               console.error("[v0] Workflow creation failed, but connection successful:", err)
-              setIsConnectionComplete(true)
-              onConnected(instanceName, true)
+              // Connection is still successful even if workflow fails
             }
 
             return true
@@ -280,7 +282,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
         }
       }, 180000)
     })
-  }, [instanceName, connectionStatus.status, onConnected, generateQRCode])
+  }, [instanceName, onConnected, generateQRCode]) // Removed connectionStatus.status from dependencies to prevent infinite loops
 
   const createAutomationWorkflow = async () => {
     try {
@@ -373,7 +375,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
       default:
         return (
           <Badge variant="outline" className="gap-1">
-            <QrCode className="h-3 w-3" />
+            <QrCode className="h-3 w-3 text-accent" />
             {language === "tr" ? "Taramaya Hazır" : "Ready to scan"}
           </Badge>
         )
@@ -441,7 +443,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                 </div>
               )}
 
-              {connectionStatus.status === "connected" && (
+              {(connectionStatus.status === "connected" || isConnectionComplete) && (
                 <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
                   <div className="flex items-center justify-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
@@ -467,15 +469,11 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                           : "WhatsApp connected! Loading dashboard..."}
                       </p>
                     </div>
-                  ) : isConnectionComplete ? (
+                  ) : (
                     <p className="text-xs text-green-600 mt-1">
                       {language === "tr"
                         ? "Kurulum tamamlandı! Panel yükleniyor..."
                         : "Setup complete! Loading dashboard..."}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-green-600 mt-1">
-                      {language === "tr" ? "AI otomasyonu hazırlanıyor..." : "Preparing AI automation..."}
                     </p>
                   )}
                 </div>
