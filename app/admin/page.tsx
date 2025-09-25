@@ -6,6 +6,10 @@ import { debugLog } from "@/lib/debug"
 export default async function AdminPage() {
   const supabase = await createClient()
 
+  if (!supabase) {
+    throw new Error("Supabase client could not be initialized. Please check your environment variables.")
+  }
+
   debugLog("[v0] Admin page accessed")
 
   // Check if user is authenticated

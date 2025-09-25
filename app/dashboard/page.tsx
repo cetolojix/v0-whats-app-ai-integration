@@ -5,6 +5,10 @@ import { UserDashboard } from "@/components/user-dashboard"
 export default async function DashboardPage() {
   const supabase = await createClient()
 
+  if (!supabase) {
+    throw new Error("Supabase client could not be initialized. Please check your environment variables.")
+  }
+
   // Check if user is authenticated
   const {
     data: { user },
