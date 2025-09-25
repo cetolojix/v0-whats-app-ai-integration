@@ -253,8 +253,12 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             connectingTimeoutCount++ // Increment connecting timeout counter
             setConnectionStatus({ status: "connecting" })
 
-            if (connectingTimeoutCount >= 15) {
-              console.log(`[v0] Instance stuck in connecting state for too long, regenerating QR code`)
+            console.log(`[v0] Instance still connecting, timeout count: ${connectingTimeoutCount}/8`)
+
+            if (connectingTimeoutCount >= 8) {
+              console.log(
+                `[v0] Instance stuck in connecting state for too long (${connectingTimeoutCount * 5} seconds), regenerating QR code`,
+              )
               setError("Connection taking too long. Generating new QR code...")
               if (monitoringIntervalRef.current) {
                 clearInterval(monitoringIntervalRef.current)
@@ -265,6 +269,27 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
               }, 2000)
               return true
             }
+          }
+        } else if (response.ok && data.success && data.status === "connecting") {
+          consecutiveCloseCount = 0
+          connectingTimeoutCount++
+          setConnectionStatus({ status: "connecting" })
+
+          console.log(`[v0] Instance status is connecting, timeout count: ${connectingTimeoutCount}/8`)
+
+          if (connectingTimeoutCount >= 8) {
+            console.log(
+              `[v0] Instance stuck in connecting status for too long (${connectingTimeoutCount * 5} seconds), regenerating QR code`,
+            )
+            setError("Connection taking too long. Generating new QR code...")
+            if (monitoringIntervalRef.current) {
+              clearInterval(monitoringIntervalRef.current)
+              monitoringIntervalRef.current = null
+            }
+            setTimeout(() => {
+              generateQRCode()
+            }, 2000)
+            return true
           }
         } else if (response.status === 404) {
           console.log(`[v0] Instance not found, creating new QR code`)
@@ -325,9 +350,9 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
         }
         if (connectionStatus.status === "connecting") {
           setConnectionStatus({ status: "disconnected" })
-          setError("Connection timeout after 90 seconds. Please try generating a new QR code.")
+          setError("Connection timeout after 60 seconds. Please try generating a new QR code.")
         }
-      }, 90000) // Reduced from 120 seconds to 90 seconds
+      }, 60000) // Reduced from 90 seconds to 60 seconds
     })
   }, [instanceName, connectionStatus.status, onConnected, generateQRCode])
 
@@ -422,7 +447,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
       default:
         return (
           <Badge variant="outline" className="gap-1">
-            <QrCode className="h-3 w-3" />
+            <QrCode className="h-3 w-3 text-accent" />
             {language === "tr" ? "Taramaya Hazır" : "Ready to scan"}
           </Badge>
         )
