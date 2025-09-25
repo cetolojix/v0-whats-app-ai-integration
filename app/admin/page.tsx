@@ -20,8 +20,8 @@ export default async function AdminPage() {
 
   debugLog("[v0] User authentication check:", { user: user?.email, error })
 
-  if (error || !user) {
-    debugLog("[v0] User not authenticated, redirecting to login")
+  if (error || !user || !user.email) {
+    debugLog("[v0] User not authenticated or missing email, redirecting to login")
     redirect("/auth/login")
   }
 
@@ -103,5 +103,11 @@ export default async function AdminPage() {
     instancesCount: instances.length,
   })
 
-  return <AdminDashboard users={users} instances={instances} currentUser={user} />
+  const currentUser = {
+    id: user.id,
+    email: user.email, // Now guaranteed to be string, not string | undefined
+    role: profile.role,
+  }
+
+  return <AdminDashboard users={users} instances={instances} currentUser={currentUser} />
 }
