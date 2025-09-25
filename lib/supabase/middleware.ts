@@ -2,12 +2,20 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function updateSession(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL
 
-  // If Supabase credentials are not available, skip authentication
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+
   if (!supabaseUrl || !supabaseAnonKey) {
+    console.log("[v0] Supabase credentials check:")
+    console.log("[v0] - NEXT_PUBLIC_SUPABASE_URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log("[v0] - SUPABASE_URL:", !!process.env.SUPABASE_URL)
+    console.log("[v0] - NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    console.log("[v0] - SUPABASE_ANON_KEY:", !!process.env.SUPABASE_ANON_KEY)
     console.log("[v0] Supabase credentials not available in middleware, skipping auth")
+
     return NextResponse.next({
       request,
     })
@@ -41,21 +49,21 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (
-      !user &&
-      (request.nextUrl.pathname.startsWith("/admin") ||
-        request.nextUrl.pathname.startsWith("/instances") ||
-        request.nextUrl.pathname.startsWith("/dashboard"))
-    ) {
+    const isProtectedRoute =
+      request.nextUrl.pathname.startsWith("/admin") ||
+      request.nextUrl.pathname.startsWith("/instances") ||
+      request.nextUrl.pathname.startsWith("/dashboard")
+
+    const isAuthRoute =
+      request.nextUrl.pathname.startsWith("/auth/login") || request.nextUrl.pathname.startsWith("/auth/register")
+
+    if (!user && isProtectedRoute) {
       const url = request.nextUrl.clone()
       url.pathname = "/auth/login"
       return NextResponse.redirect(url)
     }
 
-    if (
-      user &&
-      (request.nextUrl.pathname.startsWith("/auth/login") || request.nextUrl.pathname.startsWith("/auth/register"))
-    ) {
+    if (user && isAuthRoute) {
       const url = request.nextUrl.clone()
       url.pathname = "/instances"
       return NextResponse.redirect(url)

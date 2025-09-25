@@ -30,12 +30,27 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false)
   const [workflowError, setWorkflowError] = useState("")
   const [isConnectionComplete, setIsConnectionComplete] = useState(false)
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
 
   const t = getTranslation(language)
   const maxRetries = 3
 
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (monitoringIntervalRef.current) {
+        clearInterval(monitoringIntervalRef.current)
+        monitoringIntervalRef.current = null
+      }
+    }
+  }, [])
+
   const cleanupOldInstances = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     setIsCleaningUp(true)
     try {
       console.log("[v0] Cleaning up old instances...")
@@ -51,11 +66,15 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     } catch (err) {
       console.error("[v0] Failed to cleanup old instances:", err)
     } finally {
-      setIsCleaningUp(false)
+      if (isMountedRef.current) {
+        setIsCleaningUp(false)
+      }
     }
   }, [instanceName])
 
   const generateQRCode = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     setIsLoading(true)
     setError("")
     setCountdown(60)
@@ -71,44 +90,57 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
         // Check if instance is already connected
         if (data.status === "already_connected") {
           console.log(`[v0] Instance ${instanceName} is already connected, transitioning to connected state`)
-          setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
-          setIsConnectionComplete(true)
-          onConnected(instanceName, true)
+          if (isMountedRef.current) {
+            setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
+            setIsConnectionComplete(true)
+            onConnected(instanceName, true)
+          }
           return
         }
         throw new Error(data.error || "Failed to generate QR code")
       }
 
-      if (data.qrCode) {
+      if (data.qrCode && isMountedRef.current) {
         setQrCode(data.qrCode)
         setRetryCount(0)
         startConnectionMonitoring()
-      } else {
+      } else if (!data.qrCode) {
         throw new Error("No QR code received from server")
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to generate QR code"
-      setError(errorMessage)
+      if (isMountedRef.current) {
+        setError(errorMessage)
+      }
       console.error(`[v0] QR code generation failed:`, errorMessage)
 
-      if (retryCount < maxRetries) {
+      if (retryCount < maxRetries && isMountedRef.current) {
         setTimeout(() => {
-          setRetryCount((prev) => prev + 1)
-          generateQRCode()
+          if (isMountedRef.current) {
+            setRetryCount((prev) => prev + 1)
+            generateQRCode()
+          }
         }, 5000)
       }
     } finally {
-      setIsLoading(false)
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
     }
   }, [instanceName, retryCount, cleanupOldInstances, onConnected])
 
   const checkExistingConnections = useCallback(async () => {
+    if (!isMountedRef.current || isCheckingConnection) return false
+
+    setIsCheckingConnection(true)
     try {
       console.log(`[v0] Checking if user's instance "${instanceName}" is already connected...`)
       const response = await fetch(`/api/evolution/status?instance=${encodeURIComponent(instanceName)}`)
       const data = await response.json()
 
       console.log(`[v0] checkExistingConnections response:`, data)
+
+      if (!isMountedRef.current) return false
 
       if (response.ok && data.success) {
         const isConnectedViaStatus = data.status === "connected"
@@ -119,9 +151,10 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
         if (isConnectedViaStatus || isConnectedViaState) {
           console.log(`[v0] User's instance "${instanceName}" is already connected!`)
           setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
+          setIsConnectionComplete(true)
 
           console.log(`[v0] Calling onConnected for user's instance: ${instanceName}`)
-          onConnected(instanceName, false)
+          onConnected(instanceName, true)
           return true
         }
       }
@@ -133,9 +166,10 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
         if (state === "open" || state === "connected") {
           console.log(`[v0] User's instance "${instanceName}" is already connected via legacy format!`)
           setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
+          setIsConnectionComplete(true)
 
           console.log(`[v0] Calling onConnected for user's instance: ${instanceName}`)
-          onConnected(instanceName, false)
+          onConnected(instanceName, true)
           return true
         }
       }
@@ -145,10 +179,16 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     } catch (err) {
       console.error(`[v0] Failed to check user's instance "${instanceName}":`, err)
       return false
+    } finally {
+      if (isMountedRef.current) {
+        setIsCheckingConnection(false)
+      }
     }
-  }, [onConnected, instanceName])
+  }, [instanceName, onConnected, isCheckingConnection])
 
   const startConnectionMonitoring = useCallback(() => {
+    if (!isMountedRef.current) return
+
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current)
       monitoringIntervalRef.current = null
@@ -157,15 +197,30 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     setConnectionStatus({ status: "connecting" })
     let consecutiveCloseCount = 0
     let checkCount = 0
+    const maxChecks = 36 // 3 minutes with 5-second intervals
 
     const checkConnection = async () => {
+      if (!isMountedRef.current) return true // Stop checking if unmounted
+
       try {
         checkCount++
-        console.log(`[v0] Checking connection status for: ${instanceName} (attempt ${checkCount})`)
+        console.log(`[v0] Checking connection status for: ${instanceName} (attempt ${checkCount}/${maxChecks})`)
+
+        if (checkCount > maxChecks) {
+          console.log(`[v0] Maximum connection checks reached for ${instanceName}`)
+          if (isMountedRef.current) {
+            setConnectionStatus({ status: "disconnected" })
+            setError("Connection timeout. Please try generating a new QR code.")
+          }
+          return true
+        }
+
         const response = await fetch(`/api/evolution/status?instance=${encodeURIComponent(instanceName)}`)
         const data = await response.json()
 
         console.log(`[v0] Status response:`, data)
+
+        if (!isMountedRef.current) return true
 
         if (response.ok && data.success && data.status === "connected") {
           console.log(`[v0] Instance ${instanceName} is connected! Calling onConnected...`)
@@ -178,7 +233,6 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
           }
 
           console.log(`[v0] Calling onConnected callback for ${instanceName}`)
-
           setIsConnectionComplete(true)
           onConnected(instanceName, true)
 
@@ -187,7 +241,6 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             await createAutomationWorkflow()
           } catch (err) {
             console.error("[v0] Workflow creation failed, but connection successful:", err)
-            // Connection is still successful even if workflow fails
           }
 
           return true
@@ -206,7 +259,6 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             }
 
             console.log(`[v0] Calling onConnected callback for ${instanceName}`)
-
             setIsConnectionComplete(true)
             onConnected(instanceName, true)
 
@@ -215,7 +267,6 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
               await createAutomationWorkflow()
             } catch (err) {
               console.error("[v0] Workflow creation failed, but connection successful:", err)
-              // Connection is still successful even if workflow fails
             }
 
             return true
@@ -230,7 +281,9 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                 monitoringIntervalRef.current = null
               }
               setTimeout(() => {
-                generateQRCode()
+                if (isMountedRef.current) {
+                  generateQRCode()
+                }
               }, 3000)
               return true
             }
@@ -246,7 +299,9 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             monitoringIntervalRef.current = null
           }
           setTimeout(() => {
-            generateQRCode()
+            if (isMountedRef.current) {
+              generateQRCode()
+            }
           }, 2000)
           return true
         }
@@ -259,32 +314,31 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     }
 
     checkConnection().then((isConnected) => {
-      if (isConnected) {
-        return // Exit early if already connected
+      if (isConnected || !isMountedRef.current) {
+        return // Exit early if already connected or unmounted
       }
 
       monitoringIntervalRef.current = setInterval(async () => {
+        if (!isMountedRef.current) {
+          if (monitoringIntervalRef.current) {
+            clearInterval(monitoringIntervalRef.current)
+            monitoringIntervalRef.current = null
+          }
+          return
+        }
+
         const isConnected = await checkConnection()
         if (isConnected && monitoringIntervalRef.current) {
           clearInterval(monitoringIntervalRef.current)
           monitoringIntervalRef.current = null
         }
       }, 5000)
-
-      setTimeout(() => {
-        if (monitoringIntervalRef.current) {
-          clearInterval(monitoringIntervalRef.current)
-          monitoringIntervalRef.current = null
-        }
-        if (connectionStatus.status === "connecting") {
-          setConnectionStatus({ status: "disconnected" })
-          setError("Connection timeout after 3 minutes. Please try generating a new QR code.")
-        }
-      }, 180000)
     })
-  }, [instanceName, onConnected, generateQRCode]) // Removed connectionStatus.status from dependencies to prevent infinite loops
+  }, [instanceName, onConnected, generateQRCode])
 
   const createAutomationWorkflow = async () => {
+    if (!isMountedRef.current) return
+
     try {
       console.log("[v0] Creating automation workflow for:", instanceName)
       setIsCreatingWorkflow(true)
@@ -313,41 +367,48 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     } catch (err) {
       console.error("[v0] Error creating workflow:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to create workflow"
-      setWorkflowError(errorMessage)
-      throw err // Re-throw error to handle it in the calling function
+      if (isMountedRef.current) {
+        setWorkflowError(errorMessage)
+      }
+      throw err
     } finally {
-      setIsCreatingWorkflow(false)
+      if (isMountedRef.current) {
+        setIsCreatingWorkflow(false)
+      }
     }
   }
 
   useEffect(() => {
+    let mounted = true
+
     const initializeConnection = async () => {
+      if (!mounted || !isMountedRef.current) return
+
       const hasExistingConnection = await checkExistingConnections()
-      if (!hasExistingConnection) {
+      if (!hasExistingConnection && mounted && isMountedRef.current) {
         generateQRCode()
       }
     }
 
     initializeConnection()
-  }, [checkExistingConnections, generateQRCode])
+
+    return () => {
+      mounted = false
+    }
+  }, [instanceName]) // Only depend on instanceName to prevent infinite loops
 
   useEffect(() => {
-    if (countdown > 0 && connectionStatus.status !== "connected") {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+    if (countdown > 0 && connectionStatus.status !== "connected" && !isConnectionComplete) {
+      const timer = setTimeout(() => {
+        if (isMountedRef.current) {
+          setCountdown(countdown - 1)
+        }
+      }, 1000)
       return () => clearTimeout(timer)
-    } else if (countdown === 0 && connectionStatus.status === "disconnected") {
+    } else if (countdown === 0 && connectionStatus.status === "disconnected" && !isConnectionComplete) {
       generateQRCode()
     }
-  }, [countdown, connectionStatus.status, generateQRCode])
-
-  useEffect(() => {
-    return () => {
-      if (monitoringIntervalRef.current) {
-        clearInterval(monitoringIntervalRef.current)
-        monitoringIntervalRef.current = null
-      }
-    }
-  }, [instanceName])
+  }, [countdown, connectionStatus.status, isConnectionComplete, generateQRCode])
 
   const getStatusBadge = () => {
     switch (connectionStatus.status) {
