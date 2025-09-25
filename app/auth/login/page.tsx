@@ -9,36 +9,37 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 export const dynamic = "force-dynamic"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [showResendConfirmation, setShowResendConfirmation] = useState(false)
-  const [countdown, setCountdown] = useState(0)
   const [supabaseAvailable, setSupabaseAvailable] = useState(true)
   const router = useRouter()
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, "")
+    if (cleaned.startsWith("0")) {
+      return "+90" + cleaned.substring(1)
+    } else if (cleaned.startsWith("90")) {
+      return "+" + cleaned
+    } else if (cleaned.length === 10) {
+      return "+90" + cleaned
     }
-    return () => clearTimeout(timer)
-  }, [countdown])
+    return phone
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    setShowResendConfirmation(false)
 
     try {
-      console.log("[v0] Attempting login with email:", email)
+      console.log("[v0] Attempting login with phone:", phone)
 
       const supabase = createClient()
       if (!supabase) {
@@ -47,8 +48,20 @@ export default function LoginPage() {
         return
       }
 
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("phone", formatPhoneNumber(phone))
+        .single()
+
+      if (profileError || !profileData) {
+        console.log("[v0] Profile not found for phone:", phone)
+        setError("Bu telefon numarası ile kayıtlı kullanıcı bulunamadı.")
+        return
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: profileData.email,
         password,
       })
 
@@ -57,13 +70,8 @@ export default function LoginPage() {
       if (error) {
         console.log("[v0] Login error:", error.message)
 
-        if (error.message === "Email not confirmed") {
-          setError(
-            "Email adresiniz henüz doğrulanmamış. Email adresinizi kontrol edin veya yeni doğrulama emaili gönderin.",
-          )
-          setShowResendConfirmation(true)
-        } else if (error.message === "Invalid login credentials") {
-          setError("Email veya şifre hatalı. Lütfen tekrar deneyin.")
+        if (error.message === "Invalid login credentials") {
+          setError("Telefon numarası veya şifre hatalı. Lütfen tekrar deneyin.")
         } else {
           setError(error.message)
         }
@@ -85,77 +93,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleResendConfirmation = async () => {
-    if (countdown > 0) {
-      setError(`Lütfen ${countdown} saniye bekleyin ve tekrar deneyin.`)
-      return
-    }
-
-    if (!supabaseAvailable) {
-      setError("Veritabanı bağlantısı mevcut değil.")
-      return
-    }
-
-    const supabase = createClient()
-    setIsLoading(true)
-
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email,
-        options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) {
-        if (error.message.includes("For security purposes")) {
-          const match = error.message.match(/after (\d+) seconds/)
-          if (match) {
-            const seconds = Number.parseInt(match[1])
-            setCountdown(seconds)
-            setError(`Güvenlik amacıyla ${seconds} saniye beklemeniz gerekiyor.`)
-          } else {
-            setError("Doğrulama emaili gönderilemedi: " + error.message)
-          }
-        } else {
-          setError("Doğrulama emaili gönderilemedi: " + error.message)
-        }
-      } else {
-        setError("Doğrulama emaili gönderildi! Email adresinizi kontrol edin.")
-        setShowResendConfirmation(false)
-        setCountdown(60)
-      }
-    } catch (error) {
-      setError("Doğrulama emaili gönderilemedi. Lütfen tekrar deneyin.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleConfirmEmail = async () => {
-    if (email === "admin@whatsapp-ai.com") {
-      try {
-        const response = await fetch("/api/confirm-admin-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        })
-
-        if (response.ok) {
-          setError("Admin email doğrulandı! Tekrar giriş yapmayı deneyin.")
-        } else {
-          setError("Email doğrulanamadı. Lütfen destek ile iletişime geçin.")
-        }
-      } catch (error) {
-        setError("Email doğrulanamadı. Lütfen destek ile iletişime geçin.")
-      }
-    }
-  }
-
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
@@ -163,20 +100,20 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Giriş Yap</CardTitle>
-              <CardDescription>Hesabınıza giriş yapmak için email ve şifrenizi girin</CardDescription>
+              <CardDescription>Hesabınıza giriş yapmak için telefon numaranız ve şifrenizi girin</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="phone">Telefon Numarası</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="ornek@email.com"
+                      id="phone"
+                      type="tel"
+                      placeholder="05XXXXXXXXX"
                       required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                     />
                   </div>
                   <div className="grid gap-2">
@@ -192,31 +129,6 @@ export default function LoginPage() {
                   {error && (
                     <div className="text-sm text-red-500">
                       <p>{error}</p>
-                      {error.includes("Email") &&
-                        error.includes("doğrulanmamış") &&
-                        email === "admin@whatsapp-ai.com" && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 w-full bg-transparent"
-                            onClick={handleConfirmEmail}
-                          >
-                            Admin Email Doğrula
-                          </Button>
-                        )}
-                      {showResendConfirmation && email !== "admin@whatsapp-ai.com" && supabaseAvailable && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 w-full bg-transparent"
-                          onClick={handleResendConfirmation}
-                          disabled={isLoading || countdown > 0}
-                        >
-                          {countdown > 0 ? `Doğrulama Emaili Gönder (${countdown}s)` : "Doğrulama Emaili Gönder"}
-                        </Button>
-                      )}
                     </div>
                   )}
                   <Button type="submit" className="w-full" disabled={isLoading || !supabaseAvailable}>

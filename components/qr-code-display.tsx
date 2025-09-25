@@ -197,7 +197,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     setConnectionStatus({ status: "connecting" })
     let consecutiveCloseCount = 0
     let checkCount = 0
-    const maxChecks = 36 // 3 minutes with 5-second intervals
+    const maxChecks = 24 // 2 minutes with 5-second intervals
 
     const checkConnection = async () => {
       if (!isMountedRef.current) return true // Stop checking if unmounted
@@ -210,7 +210,12 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
           console.log(`[v0] Maximum connection checks reached for ${instanceName}`)
           if (isMountedRef.current) {
             setConnectionStatus({ status: "disconnected" })
-            setError("Connection timeout. Please try generating a new QR code.")
+            setError("Bağlantı zaman aşımı. Yeni QR kod oluşturuluyor...")
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                generateQRCode()
+              }
+            }, 2000)
           }
           return true
         }
@@ -274,8 +279,8 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             consecutiveCloseCount++
             console.log(`[v0] Instance closed, count: ${consecutiveCloseCount}`)
 
-            if (consecutiveCloseCount >= 3) {
-              setError("Connection lost multiple times. Generating new QR code...")
+            if (consecutiveCloseCount >= 2) {
+              setError("Bağlantı kesildi. Yeni QR kod oluşturuluyor...")
               if (monitoringIntervalRef.current) {
                 clearInterval(monitoringIntervalRef.current)
                 monitoringIntervalRef.current = null
@@ -284,7 +289,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                 if (isMountedRef.current) {
                   generateQRCode()
                 }
-              }, 3000)
+              }, 1500)
               return true
             }
           } else if (state === "connecting") {
@@ -293,7 +298,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
           }
         } else if (response.status === 404) {
           console.log(`[v0] Instance not found, creating new QR code`)
-          setError("Instance not found. Creating new QR code...")
+          setError("Instance bulunamadı. Yeni QR kod oluşturuluyor...")
           if (monitoringIntervalRef.current) {
             clearInterval(monitoringIntervalRef.current)
             monitoringIntervalRef.current = null
@@ -302,7 +307,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             if (isMountedRef.current) {
               generateQRCode()
             }
-          }, 2000)
+          }, 1000)
           return true
         }
 
@@ -406,6 +411,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
       }, 1000)
       return () => clearTimeout(timer)
     } else if (countdown === 0 && connectionStatus.status === "disconnected" && !isConnectionComplete) {
+      console.log("[v0] QR code expired, generating new one...")
       generateQRCode()
     }
   }, [countdown, connectionStatus.status, isConnectionComplete, generateQRCode])
@@ -487,6 +493,13 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                   className="h-44 w-44 rounded"
                 />
               </div>
+
+              {countdown > 0 && connectionStatus.status !== "connected" && !isConnectionComplete && (
+                <div className="text-center p-2 rounded-lg bg-orange-50 border border-orange-200">
+                  <p className="text-sm font-medium text-orange-800">QR kod süresi: {countdown} saniye</p>
+                  <p className="text-xs text-orange-600 mt-1">Süre dolduğunda otomatik yeni kod oluşturulacak</p>
+                </div>
+              )}
 
               {connectionStatus.status === "connecting" && !isConnectionComplete && (
                 <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">

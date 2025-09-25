@@ -16,7 +16,6 @@ export const dynamic = "force-dynamic"
 
 export default function RegisterPage() {
   const [phone, setPhone] = useState("")
-  const [email, setEmail] = useState("") // Email alanı eklendi
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [fullName, setFullName] = useState("")
@@ -39,7 +38,6 @@ export default function RegisterPage() {
   }
 
   const formatPhoneNumber = (phone: string) => {
-    // Türkiye telefon numarası formatı: +90XXXXXXXXXX
     const cleaned = phone.replace(/\D/g, "")
     if (cleaned.startsWith("0")) {
       return "+90" + cleaned.substring(1)
@@ -98,11 +96,6 @@ export default function RegisterPage() {
       return
     }
 
-    if (!email.trim()) {
-      setError("Email adresi gereklidir")
-      return
-    }
-
     const formattedPhone = formatPhoneNumber(phone)
     if (!formattedPhone.match(/^\+90\d{10}$/)) {
       setError("Geçerli bir Türkiye telefon numarası girin (örn: 05XXXXXXXXX)")
@@ -113,7 +106,7 @@ export default function RegisterPage() {
     setError("")
     setMessage("")
 
-    console.log("[v0] Starting registration with phone:", formattedPhone, "and email:", email)
+    console.log("[v0] Starting registration with phone:", formattedPhone)
 
     try {
       const codeSent = await sendVerificationCode()
@@ -143,6 +136,8 @@ export default function RegisterPage() {
     setError("")
 
     try {
+      const phoneEmail = `${formatPhoneNumber(phone).replace("+", "")}@phone.whatsapp-ai.com`
+
       const response = await fetch("/api/verify-sms-code", {
         method: "POST",
         headers: {
@@ -152,7 +147,7 @@ export default function RegisterPage() {
           phone: formatPhoneNumber(phone),
           code: verificationCode,
           fullName: fullName,
-          email: email,
+          email: phoneEmail,
           password: password,
         }),
       })
@@ -175,7 +170,6 @@ export default function RegisterPage() {
           console.log("[v0] Login credentials received, attempting automatic login...")
           setMessage("Hesabınız başarıyla oluşturuldu! Otomatik olarak giriş yapılıyor...")
 
-          // Otomatik login yap
           const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
             email: result.loginCredentials.email,
             password: result.loginCredentials.password,
@@ -193,38 +187,8 @@ export default function RegisterPage() {
               router.push("/instances")
             }, 1000)
           }
-        } else if (result.session) {
-          console.log("[v0] Session token received, setting session...")
-          setMessage("Hesabınız başarıyla oluşturuldu! Otomatik olarak giriş yapılıyor...")
-
-          // Supabase client ile session'ı set et
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: result.session.access_token,
-            refresh_token: result.session.refresh_token,
-          })
-
-          if (sessionError) {
-            console.error("[v0] Session set error:", sessionError)
-            setError("Giriş yapılamadı, lütfen manuel olarak giriş yapın")
-            setTimeout(() => {
-              router.push("/auth/login")
-            }, 2000)
-          } else {
-            console.log("[v0] Session set successfully, redirecting...")
-            setTimeout(() => {
-              router.push("/instances")
-            }, 1000)
-          }
-        } else if (result.magicLink) {
-          console.log("[v0] Magic link received, redirecting...")
-          setMessage("Hesabınız başarıyla oluşturuldu! Otomatik olarak giriş yapılıyor...")
-
-          // Magic link'e yönlendir
-          window.location.href = result.magicLink
         } else {
           setMessage("Hesabınız başarıyla oluşturuldu! Şimdi giriş yapabilirsiniz.")
-
-          // 2 saniye sonra login sayfasına yönlendir
           setTimeout(() => {
             router.push("/auth/login")
           }, 2000)
@@ -277,17 +241,6 @@ export default function RegisterPage() {
                   placeholder="Adınız ve soyadınız"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Adresi</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="ornek@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>

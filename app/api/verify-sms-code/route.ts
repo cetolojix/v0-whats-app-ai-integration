@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Doğrulama kodu bulunamadı" }, { status: 400 })
     }
 
-    // Kod süresi kontrolü (10 dakika)
     const now = Date.now()
     const codeAge = now - storedData.timestamp
     const maxAge = 10 * 60 * 1000 // 10 dakika
@@ -32,7 +31,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Doğrulama kodu süresi dolmuş" }, { status: 400 })
     }
 
-    // Kod kontrolü
     if (storedData.code !== code) {
       console.log("[v0] Invalid verification code for phone:", phone)
       return NextResponse.json({ error: "Geçersiz doğrulama kodu" }, { status: 400 })
@@ -42,7 +40,6 @@ export async function POST(request: NextRequest) {
       try {
         const adminSupabase = createAdminClient()
 
-        // 1. Önce mevcut kullanıcıyı kontrol et
         const { data: existingUser } = await adminSupabase.auth.admin.listUsers()
         const userExists = existingUser.users.find((user) => user.email === email)
 
@@ -51,11 +48,10 @@ export async function POST(request: NextRequest) {
           console.log("[v0] User already exists:", userExists.id)
           authData = { user: userExists }
         } else {
-          // 2. Yeni kullanıcı oluştur
           const { data: newUserData, error: authError } = await adminSupabase.auth.admin.createUser({
             email: email,
             password: password,
-            email_confirm: true,
+            email_confirm: true, // Auto-confirm email since we're using phone verification
             user_metadata: {
               full_name: fullName,
               phone: phone,
@@ -71,7 +67,6 @@ export async function POST(request: NextRequest) {
           authData = newUserData
         }
 
-        // 3. Profile oluştur veya güncelle
         if (authData.user) {
           const { data: existingProfile } = await adminSupabase
             .from("profiles")
@@ -87,6 +82,7 @@ export async function POST(request: NextRequest) {
                   id: authData.user.id,
                   email: email,
                   full_name: fullName,
+                  phone: phone, // Store phone number for login lookup
                   role: "user",
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
@@ -106,7 +102,6 @@ export async function POST(request: NextRequest) {
 
           console.log("[v0] User created successfully, returning login credentials")
 
-          // Login bilgilerini döndür ki client-side'da otomatik login yapabilsin
           return NextResponse.json({
             success: true,
             message: "Telefon numarası doğrulandı ve hesap oluşturuldu",
@@ -122,7 +117,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Doğrulama başarılı
     console.log("[v0] SMS verification successful for phone:", phone)
     deleteVerificationCode(phone)
 
