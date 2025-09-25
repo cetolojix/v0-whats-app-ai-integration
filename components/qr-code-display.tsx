@@ -162,7 +162,15 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
       try {
         checkCount++
         console.log(`[v0] Checking connection status for: ${instanceName} (attempt ${checkCount})`)
-        const response = await fetch(`/api/evolution/status?instance=${encodeURIComponent(instanceName)}`)
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+        const response = await fetch(`/api/evolution/status?instance=${encodeURIComponent(instanceName)}`, {
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+
         const data = await response.json()
 
         console.log(`[v0] Status response:`, data)
@@ -251,7 +259,11 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
 
         return false
       } catch (err) {
-        console.error("[v0] Connection check failed:", err)
+        if (err.name === "AbortError") {
+          console.error("[v0] Connection check timed out")
+        } else {
+          console.error("[v0] Connection check failed:", err)
+        }
         return false
       }
     }

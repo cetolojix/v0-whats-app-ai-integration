@@ -8,6 +8,23 @@ export async function updateSession(request: NextRequest) {
   // If Supabase credentials are not available, skip authentication
   if (!supabaseUrl || !supabaseAnonKey) {
     console.log("[v0] Supabase credentials not available in middleware, skipping auth")
+    console.log("[v0] Available env vars:", {
+      hasPublicUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasUrl: !!process.env.SUPABASE_URL,
+      hasPublicKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      hasKey: !!process.env.SUPABASE_ANON_KEY,
+    })
+
+    if (
+      request.nextUrl.pathname.startsWith("/admin") ||
+      request.nextUrl.pathname.startsWith("/instances") ||
+      request.nextUrl.pathname.startsWith("/dashboard")
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/auth/login"
+      return NextResponse.redirect(url)
+    }
+
     return NextResponse.next({
       request,
     })
