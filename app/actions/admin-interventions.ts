@@ -6,6 +6,10 @@ import { redirect } from "next/navigation"
 export async function forceLogoutUser(userId: string) {
   const supabase = await createClient()
 
+  if (!supabase) {
+    throw new Error("Failed to initialize Supabase client")
+  }
+
   const {
     data: { user },
     error: userError,
@@ -55,6 +59,10 @@ export async function forceLogoutUser(userId: string) {
 export async function suspendUser(userId: string) {
   const supabase = await createClient()
 
+  if (!supabase) {
+    throw new Error("Failed to initialize Supabase client")
+  }
+
   const {
     data: { user },
     error: userError,
@@ -103,6 +111,10 @@ export async function suspendUser(userId: string) {
 
 export async function forceDisconnectInstance(instanceId: string) {
   const supabase = await createClient()
+
+  if (!supabase) {
+    throw new Error("Failed to initialize Supabase client")
+  }
 
   const {
     data: { user },
@@ -158,6 +170,10 @@ export async function forceDisconnectInstance(instanceId: string) {
 
 export async function terminateUserSession(sessionId: string) {
   const supabase = await createClient()
+
+  if (!supabase) {
+    throw new Error("Failed to initialize Supabase client")
+  }
 
   const {
     data: { user },
