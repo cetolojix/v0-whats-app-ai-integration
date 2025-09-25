@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic"
 
 import { type NextRequest, NextResponse } from "next/server"
-import { AbortSignal } from "abort-controller"
 
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
 const EVOLUTION_API_KEY = "hvsctnOWysGzOGHea8tEzV2iHCGr9H4L"
@@ -10,6 +9,20 @@ const lastRequestTime = new Map<string, number>()
 const statusCache = new Map<string, { data: any; timestamp: number }>()
 const MIN_REQUEST_INTERVAL = 1000 // 1 second between requests
 const CACHE_DURATION = 5000 // Cache for 5 seconds
+
+function createTimeoutSignal(timeoutMs: number): AbortSignal {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, timeoutMs)
+
+  // Clean up timeout if request completes normally
+  const originalSignal = controller.signal
+  const cleanup = () => clearTimeout(timeoutId)
+  originalSignal.addEventListener("abort", cleanup, { once: true })
+
+  return originalSignal
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,12 +54,14 @@ export async function GET(request: NextRequest) {
 
     lastRequestTime.set(instanceName, now)
 
+    const timeoutSignal = createTimeoutSignal(10000) // 10 second timeout
+
     const response = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
       headers: {
         apikey: EVOLUTION_API_KEY,
         Accept: "application/json",
       },
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: timeoutSignal,
     })
 
     console.log("[v0] Status response:", response.status)
@@ -117,18 +132,29 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[v0] Error checking instance status:", error)
 
-    const cachedStatus = statusCache.get(request.url.split("?")[1].split("=")[1] || "")
+    const instanceName = new URL(request.url).searchParams.get("instance") || ""
+    const cachedStatus = statusCache.get(instanceName)
+
     if (cachedStatus) {
       console.log("[v0] Returning cached data due to error")
       return NextResponse.json(cachedStatus.data)
     }
 
-    const errorMessage = error instanceof Error ? error.message : "Failed to check status"
+    let errorMessage = "Failed to check status"
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        errorMessage = "Request timeout - Evolution API is not responding"
+      } else if (error.message.includes("fetch")) {
+        errorMessage = "Network error - Cannot connect to Evolution API"
+      } else {
+        errorMessage = error.message
+      }
+    }
 
     return NextResponse.json(
       {
         error: errorMessage,
-        details: "Please check if the instance exists",
+        details: "Please check if the Evolution API server is running and accessible",
       },
       { status: 500 },
     )

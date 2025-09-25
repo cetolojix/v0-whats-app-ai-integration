@@ -8,14 +8,27 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
+    if (!supabase) {
+      debugLog("[v0] Failed to create Supabase client")
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    }
+
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    if (authError) {
+      debugLog("[v0] Auth error:", authError)
+      return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
+    }
+
+    if (!user) {
+      debugLog("[v0] No user found")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
+
+    debugLog("[v0] Fetching package info for user:", user.id)
 
     const { data: packageInfo, error } = await supabase
       .from("user_package_info")
@@ -30,10 +43,19 @@ export async function GET(request: NextRequest) {
         // No rows found
         debugLog("[v0] No package info found, assigning basic package to user:", user.id)
 
-        // Get basic package
-        const { data: basicPackage } = await supabase.from("packages").select("id").eq("name", "basic").single()
+        try {
+          // Get basic package
+          const { data: basicPackage, error: packageError } = await supabase
+            .from("packages")
+            .select("id")
+            .eq("name", "basic")
+            .single()
 
-        if (basicPackage) {
+          if (packageError || !basicPackage) {
+            debugLog("[v0] Basic package not found:", packageError)
+            return NextResponse.json({ error: "Package configuration error" }, { status: 500 })
+          }
+
           // Create subscription for user
           const { error: subscriptionError } = await supabase.from("user_subscriptions").insert({
             user_id: user.id,
@@ -41,27 +63,56 @@ export async function GET(request: NextRequest) {
             status: "active",
           })
 
-          if (!subscriptionError) {
-            // Retry getting package info
-            const { data: retryPackageInfo, error: retryError } = await supabase
-              .from("user_package_info")
-              .select("*")
-              .eq("user_id", user.id)
-              .single()
-
-            if (!retryError && retryPackageInfo) {
-              return NextResponse.json({ packageInfo: retryPackageInfo })
-            }
+          if (subscriptionError) {
+            debugLog("[v0] Failed to create subscription:", subscriptionError)
+            return NextResponse.json({ error: "Failed to assign package" }, { status: 500 })
           }
+
+          // Retry getting package info
+          const { data: retryPackageInfo, error: retryError } = await supabase
+            .from("user_package_info")
+            .select("*")
+            .eq("user_id", user.id)
+            .single()
+
+          if (!retryError && retryPackageInfo) {
+            debugLog("[v0] Successfully assigned basic package")
+            return NextResponse.json({ packageInfo: retryPackageInfo })
+          }
+
+          debugLog("[v0] Failed to fetch package info after assignment:", retryError)
+        } catch (assignmentError) {
+          debugLog("[v0] Error during package assignment:", assignmentError)
+          return NextResponse.json({ error: "Package assignment failed" }, { status: 500 })
         }
       }
 
-      return NextResponse.json({ error: "Failed to fetch package information" }, { status: 500 })
+      let errorMessage = "Failed to fetch package information"
+      if (error.code === "PGRST301") {
+        errorMessage = "Database connection error"
+      } else if (error.code === "42P01") {
+        errorMessage = "Database table not found - please check database setup"
+      }
+
+      return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 
+    debugLog("[v0] Package info fetched successfully")
     return NextResponse.json({ packageInfo })
   } catch (error) {
     debugLog("[v0] Error in user package info API:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+
+    let errorMessage = "Internal server error"
+    const statusCode = 500
+
+    if (error instanceof Error) {
+      if (error.message.includes("fetch")) {
+        errorMessage = "Database connection failed"
+      } else if (error.message.includes("timeout")) {
+        errorMessage = "Database request timeout"
+      }
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }
