@@ -30,20 +30,82 @@ export async function GET(request: NextRequest) {
 
     debugLog("[v0] Fetching package info for user:", user.id)
 
-    const { data: packageInfo, error } = await supabase
-      .from("user_package_info")
-      .select("*")
-      .eq("user_id", user.id)
-      .single()
+    let packageInfo = null
+    let error = null
+
+    try {
+      const { data, error: viewError } = await supabase
+        .from("user_package_info")
+        .select("*")
+        .eq("user_id", user.id)
+        .single()
+
+      packageInfo = data
+      error = viewError
+    } catch (viewErr) {
+      debugLog("[v0] View query failed, trying direct query:", viewErr)
+
+      const { data: subscriptionData, error: subError } = await supabase
+        .from("user_subscriptions")
+        .select(`
+          *,
+          packages (
+            id,
+            name,
+            display_name,
+            price,
+            features,
+            limits
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .single()
+
+      if (!subError && subscriptionData) {
+        packageInfo = {
+          user_id: user.id,
+          package_id: subscriptionData.package_id,
+          package_name: subscriptionData.packages?.name,
+          display_name: subscriptionData.packages?.display_name,
+          price: subscriptionData.packages?.price,
+          features: subscriptionData.packages?.features,
+          limits: subscriptionData.packages?.limits,
+          status: subscriptionData.status,
+          created_at: subscriptionData.created_at,
+          expires_at: subscriptionData.expires_at,
+        }
+        error = null
+      } else {
+        error = subError
+      }
+    }
 
     if (error) {
       debugLog("[v0] Error fetching user package info:", error)
 
-      if (error.code === "PGRST116") {
-        // No rows found
+      if (error.code === "PGRST116" || error.code === "42P01") {
+        // No rows found or table doesn't exist
         debugLog("[v0] No package info found, assigning basic package to user:", user.id)
 
         try {
+          const { data: packages, error: packagesError } = await supabase.from("packages").select("id, name").limit(1)
+
+          if (packagesError) {
+            debugLog("[v0] Packages table not found, returning default package info")
+            return NextResponse.json({
+              packageInfo: {
+                user_id: user.id,
+                package_name: "basic",
+                display_name: "Basic Package",
+                price: 0,
+                features: ["Basic WhatsApp Integration", "Simple AI Responses"],
+                limits: { messages_per_day: 100, instances: 1 },
+                status: "active",
+              },
+            })
+          }
+
           // Get basic package
           const { data: basicPackage, error: packageError } = await supabase
             .from("packages")
