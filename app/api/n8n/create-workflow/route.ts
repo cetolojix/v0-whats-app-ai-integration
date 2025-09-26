@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic"
-
 import { type NextRequest, NextResponse } from "next/server"
 import { debugLog } from "@/lib/debug"
 
@@ -30,36 +28,6 @@ export async function POST(request: NextRequest) {
     }
 
     debugLog("[v0] Creating workflow for instance:", instanceName)
-
-    try {
-      // Test n8n API access first
-      const testResponse = await fetch(`${N8N_API_URL}/api/v1/workflows?limit=1`, {
-        method: "GET",
-        headers: {
-          "X-N8N-API-KEY": N8N_API_TOKEN,
-        },
-      })
-
-      if (!testResponse.ok) {
-        debugLog("[v0] n8n API test failed:", testResponse.status)
-        if (testResponse.status === 401) {
-          throw new Error("n8n API authentication failed. Please check API token.")
-        }
-        throw new Error(`n8n API access failed: ${testResponse.status}`)
-      }
-
-      debugLog("[v0] n8n API access confirmed")
-    } catch (apiError) {
-      debugLog("[v0] n8n API access error:", apiError)
-      return NextResponse.json(
-        {
-          error: "n8n API access failed",
-          details: apiError instanceof Error ? apiError.message : "Unknown API error",
-          suggestion: "Please check n8n server status and API configuration",
-        },
-        { status: 503 },
-      )
-    }
 
     const credentialsId = await createEvolutionApiCredentials(instanceName)
     const openaiCredentialsId = await createOpenAICredentials(instanceName)
@@ -126,7 +94,6 @@ export async function POST(request: NextRequest) {
       {
         error: errorMessage,
         details: "Please check n8n connection and try again",
-        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )

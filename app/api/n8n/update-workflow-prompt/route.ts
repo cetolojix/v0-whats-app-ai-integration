@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic"
-
 import { type NextRequest, NextResponse } from "next/server"
 
 const N8N_API_URL = "https://n8nx.cetoloji.com"
@@ -17,6 +15,7 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Updating workflow prompt for instance:", instanceName)
     console.log("[v0] New prompt:", customPrompt.substring(0, 100) + "...")
 
+    // First, find the workflow for this instance
     const workflowsResponse = await fetch(`${N8N_API_URL}/api/v1/workflows`, {
       method: "GET",
       headers: {
@@ -29,92 +28,12 @@ export async function POST(request: NextRequest) {
     }
 
     const workflowsData = await workflowsResponse.json()
-    console.log("[v0] Workflows response:", workflowsData)
-
-    const workflows = workflowsData.workflows || workflowsData.data || []
-
-    let workflow = workflows.find((w: any) => w.id === "jJgBK6BzBeHD1ZYA")
+    const workflow = workflowsData.data?.find(
+      (w: any) => w.name.includes(instanceName) && w.name.includes("WhatsApp Bot"),
+    )
 
     if (!workflow) {
-      // Exact name match
-      workflow = workflows.find((w: any) => w.name === `WhatsApp Bot - ${instanceName}`)
-    }
-
-    if (!workflow) {
-      // Instance name içeren WhatsApp Bot workflow
-      workflow = workflows.find((w: any) => w.name.includes(instanceName) && w.name.includes("WhatsApp Bot"))
-    }
-
-    if (!workflow) {
-      // Herhangi bir WhatsApp Bot workflow
-      workflow = workflows.find((w: any) => w.name.includes("WhatsApp Bot"))
-      console.log("[v0] Found alternative WhatsApp Bot workflow:", workflow?.name)
-    }
-
-    if (!workflow) {
-      console.log("[v0] No workflow found for instance, creating new workflow:", instanceName)
-
-      try {
-        const createUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/n8n/create-workflow`
-        console.log("[v0] Calling create-workflow API at:", createUrl)
-
-        const createResponse = await fetch(createUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            instanceName,
-            workflowType: "advanced-ai",
-            customPrompt,
-          }),
-        })
-
-        console.log("[v0] Create workflow response status:", createResponse.status)
-        console.log("[v0] Create workflow response headers:", Object.fromEntries(createResponse.headers.entries()))
-
-        if (!createResponse.ok) {
-          const errorText = await createResponse.text()
-          console.log("[v0] Create workflow error response:", errorText)
-
-          let errorDetails = errorText
-          try {
-            const errorJson = JSON.parse(errorText)
-            errorDetails = errorJson.error || errorJson.message || errorText
-          } catch {
-            // Keep as text if not JSON
-          }
-
-          throw new Error(`Failed to create workflow: ${createResponse.status} - ${errorDetails}`)
-        }
-
-        const createResult = await createResponse.json()
-        console.log("[v0] Workflow created successfully:", createResult.workflowId)
-
-        return NextResponse.json({
-          success: true,
-          workflowId: createResult.workflowId,
-          workflowName: createResult.workflowName,
-          message: "New workflow created and AI prompt set successfully",
-          created: true,
-        })
-      } catch (createError) {
-        console.error("[v0] Error creating workflow:", createError)
-
-        const errorMessage = createError instanceof Error ? createError.message : "Unknown error"
-
-        return NextResponse.json(
-          {
-            error: "Failed to create workflow for this instance",
-            details: errorMessage,
-            suggestion:
-              "The n8n server might be unavailable or there could be a configuration issue. Please check the n8n connection and try again.",
-            instanceName,
-            timestamp: new Date().toISOString(),
-          },
-          { status: 500 },
-        )
-      }
+      return NextResponse.json({ error: "Workflow not found for this instance" }, { status: 404 })
     }
 
     console.log("[v0] Found workflow:", workflow.id, workflow.name)
@@ -134,6 +53,7 @@ export async function POST(request: NextRequest) {
     const workflowDetail = await workflowDetailResponse.json()
     console.log("[v0] Got workflow details, updating AI Agent node...")
 
+    // Find and update the AI Agent node with the new prompt
     const updatedNodes = workflowDetail.nodes.map((node: any) => {
       if (node.name === "AI Agent" || node.type === "@n8n/n8n-nodes-langchain.agent") {
         console.log("[v0] Updating AI Agent node with new prompt")

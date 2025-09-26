@@ -18,7 +18,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import { debugLog } from "@/lib/debug"
 import {
+  LogOut,
   Users,
   Server,
   Settings,
@@ -73,10 +77,30 @@ export function AdminDashboard({ users, instances, currentUser }: AdminDashboard
   const [isEditUserOpen, setIsEditUserOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<Profile | null>(null)
   const [newUser, setNewUser] = useState({ email: "", fullName: "", role: "user", password: "" })
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+  }
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    setSelectedUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user)))
-    alert(t.userUpdated)
+    try {
+      const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId)
+
+      if (error) {
+        debugLog("Error updating role:", error)
+        alert("Rol güncellenirken hata oluştu: " + error.message)
+        return
+      }
+
+      setSelectedUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user)))
+      alert(t.userUpdated)
+    } catch (error) {
+      debugLog("Error updating role:", error)
+      alert("Rol güncellenirken beklenmeyen bir hata oluştu")
+    }
   }
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
@@ -87,9 +111,43 @@ export function AdminDashboard({ users, instances, currentUser }: AdminDashboard
         : `${userEmail} kullanıcısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`
 
     if (confirm(confirmMessage)) {
-      setSelectedUsers((prev) => prev.filter((user) => user.id !== userId))
-      setSelectedInstances((prev) => prev.filter((instance) => instance.user_id !== userId))
-      alert("Kullanıcı başarıyla silindi!")
+      try {
+        // First delete user's instances
+        if (userInstances.length > 0) {
+          const { error: instanceError } = await supabase.from("instances").delete().eq("user_id", userId)
+
+          if (instanceError) {
+            debugLog("Error deleting user instances:", instanceError)
+            alert("Kullanıcının instance'ları silinirken hata oluştu")
+            return
+          }
+        }
+
+        // Then delete the user profile
+        const { error: profileError } = await supabase.from("profiles").delete().eq("id", userId)
+
+        if (profileError) {
+          debugLog("Error deleting user profile:", profileError)
+          alert("Kullanıcı profili silinirken hata oluştu")
+          return
+        }
+
+        // Finally delete from auth
+        const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+
+        if (authError) {
+          debugLog("Error deleting user from auth:", authError)
+          alert("Kullanıcı kimlik doğrulaması silinirken hata oluştu")
+          return
+        }
+
+        setSelectedUsers((prev) => prev.filter((user) => user.id !== userId))
+        setSelectedInstances((prev) => prev.filter((instance) => instance.user_id !== userId))
+        alert("Kullanıcı başarıyla silindi!")
+      } catch (error) {
+        debugLog("Error deleting user:", error)
+        alert("Kullanıcı silinirken beklenmeyen bir hata oluştu")
+      }
     }
   }
 
@@ -99,56 +157,174 @@ export function AdminDashboard({ users, instances, currentUser }: AdminDashboard
       return
     }
 
-    const newProfile: Profile = {
-      id: Date.now().toString(), // Mock ID
-      email: newUser.email,
-      full_name: newUser.fullName || null,
-      role: newUser.role,
-      created_at: new Date().toISOString(),
-    }
+    try {
+      // Create user in auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: newUser.email,
+        password: newUser.password,
+        email_confirm: true,
+      })
 
-    setSelectedUsers((prev) => [newProfile, ...prev])
-    setNewUser({ email: "", fullName: "", role: "user", password: "" })
-    setIsCreateUserOpen(false)
-    alert(t.userCreated)
+      if (authError) {
+        debugLog("Error creating user:", authError)
+        alert("Kullanıcı oluşturulurken hata oluştu: " + authError.message)
+        return
+      }
+
+      if (!authData.user) {
+        alert("Kullanıcı oluşturulamadı")
+        return
+      }
+
+      // Create profile
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: authData.user.id,
+        email: newUser.email,
+        full_name: newUser.fullName || null,
+        role: newUser.role,
+      })
+
+      if (profileError) {
+        debugLog("Error creating profile:", profileError)
+        alert("Kullanıcı profili oluşturulurken hata oluştu")
+        return
+      }
+
+      // Add to local state
+      const newProfile: Profile = {
+        id: authData.user.id,
+        email: newUser.email,
+        full_name: newUser.fullName || null,
+        role: newUser.role,
+        created_at: new Date().toISOString(),
+      }
+
+      setSelectedUsers((prev) => [newProfile, ...prev])
+      setNewUser({ email: "", fullName: "", role: "user", password: "" })
+      setIsCreateUserOpen(false)
+      alert(t.userCreated)
+    } catch (error) {
+      debugLog("Error creating user:", error)
+      alert("Kullanıcı oluşturulurken beklenmeyen bir hata oluştu")
+    }
   }
 
   const handleEditUser = async () => {
     if (!editingUser) return
 
-    setSelectedUsers((prev) => prev.map((user) => (user.id === editingUser.id ? editingUser : user)))
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: editingUser.full_name,
+          role: editingUser.role,
+        })
+        .eq("id", editingUser.id)
 
-    setIsEditUserOpen(false)
-    setEditingUser(null)
-    alert(t.userUpdated)
+      if (error) {
+        debugLog("Error updating user:", error)
+        alert("Kullanıcı güncellenirken hata oluştu: " + error.message)
+        return
+      }
+
+      setSelectedUsers((prev) => prev.map((user) => (user.id === editingUser.id ? editingUser : user)))
+
+      setIsEditUserOpen(false)
+      setEditingUser(null)
+      alert(t.userUpdated)
+    } catch (error) {
+      debugLog("Error updating user:", error)
+      alert("Kullanıcı güncellenirken beklenmeyen bir hata oluştu")
+    }
   }
 
   const handleDeleteInstance = async (instanceId: string, instanceName: string) => {
     if (confirm(`"${instanceName}" instance'ını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) {
-      setSelectedInstances((prev) => prev.filter((instance) => instance.id !== instanceId))
-      alert("Instance başarıyla silindi!")
+      try {
+        const { error } = await supabase.from("instances").delete().eq("id", instanceId)
+
+        if (error) {
+          debugLog("Error deleting instance:", error)
+          alert("Instance silinirken hata oluştu: " + error.message)
+          return
+        }
+
+        setSelectedInstances((prev) => prev.filter((instance) => instance.id !== instanceId))
+        alert("Instance başarıyla silindi!")
+      } catch (error) {
+        debugLog("Error deleting instance:", error)
+        alert("Instance silinirken beklenmeyen bir hata oluştu")
+      }
     }
   }
 
   const handleForceLogoutUser = async (userId: string, userEmail: string) => {
     if (confirm(`${userEmail} ${t.confirmForceLogout}`)) {
-      alert(t.userLoggedOut)
+      try {
+        // Delete all user sessions
+        const { error } = await supabase.from("user_sessions").delete().eq("user_id", userId)
+
+        if (error) {
+          debugLog("Error logging out user:", error)
+          alert("Kullanıcı oturumları sonlandırılırken hata oluştu: " + error.message)
+          return
+        }
+
+        alert(t.userLoggedOut)
+      } catch (error) {
+        debugLog("Error forcing logout:", error)
+        alert("Oturum sonlandırma işleminde beklenmeyen bir hata oluştu")
+      }
     }
   }
 
   const handleSuspendUser = async (userId: string, userEmail: string) => {
     if (confirm(`${userEmail} ${t.confirmSuspend}`)) {
-      setSelectedUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: "suspended" } : user)))
-      alert(t.userSuspended)
+      try {
+        // Update user role to suspended
+        const { error } = await supabase.from("profiles").update({ role: "suspended" }).eq("id", userId)
+
+        if (error) {
+          debugLog("Error suspending user:", error)
+          alert("Kullanıcı askıya alınırken hata oluştu: " + error.message)
+          return
+        }
+
+        setSelectedUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: "suspended" } : user)))
+        alert(t.userSuspended)
+      } catch (error) {
+        debugLog("Error suspending user:", error)
+        alert("Kullanıcı askıya alınırken beklenmeyen bir hata oluştu")
+      }
     }
   }
 
   const handleForceDisconnectInstance = async (instanceId: string, instanceName: string) => {
     if (confirm(`${instanceName} ${t.confirmForceDisconnect}`)) {
-      setSelectedInstances((prev) =>
-        prev.map((instance) => (instance.id === instanceId ? { ...instance, status: "disconnected" } : instance)),
-      )
-      alert(t.instanceDisconnected)
+      try {
+        // Update instance status to disconnected
+        const { error } = await supabase
+          .from("instances")
+          .update({
+            status: "disconnected",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", instanceId)
+
+        if (error) {
+          debugLog("Error disconnecting instance:", error)
+          alert("Instance bağlantısı kesilirken hata oluştu: " + error.message)
+          return
+        }
+
+        setSelectedInstances((prev) =>
+          prev.map((instance) => (instance.id === instanceId ? { ...instance, status: "disconnected" } : instance)),
+        )
+        alert(t.instanceDisconnected)
+      } catch (error) {
+        debugLog("Error disconnecting instance:", error)
+        alert("Instance bağlantısı kesilirken beklenmeyen bir hata oluştu")
+      }
     }
   }
 
@@ -214,6 +390,10 @@ export function AdminDashboard({ users, instances, currentUser }: AdminDashboard
               <span className="text-sm text-gray-600">
                 {t.welcome}, {currentUser.email}
               </span>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                {t.logout}
+              </Button>
             </div>
           </div>
         </div>

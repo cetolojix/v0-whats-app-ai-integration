@@ -47,40 +47,19 @@ export function InstanceDashboard({ instanceName }: InstanceDashboardProps) {
 
   const fetchInstanceStatus = async () => {
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
-
-      const response = await fetch(`/api/evolution/status?instance=${encodeURIComponent(instanceName)}`, {
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-
+      const response = await fetch(`/api/evolution/status?instance=${encodeURIComponent(instanceName)}`)
       const data = await response.json()
 
       if (response.ok) {
         setInstanceStatus(data.status)
         setError("")
-        console.log("[v0] Instance status updated:", data.status)
       } else {
         throw new Error(data.error || "Failed to fetch status")
       }
     } catch (err) {
-      console.error("[v0] Error checking instance status:", err)
-
-      if (err instanceof Error) {
-        if (err.name === "AbortError") {
-          setError("Request timeout - please try again")
-        } else if (err.message.includes("fetch")) {
-          setError("Network error - retrying...")
-        } else {
-          setError(err.message)
-          setInstanceStatus("disconnected")
-        }
-      } else {
-        setError("Failed to fetch instance status")
-        setInstanceStatus("disconnected")
-      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch instance status"
+      setError(errorMessage)
+      setInstanceStatus("disconnected")
     }
   }
 
@@ -110,7 +89,8 @@ export function InstanceDashboard({ instanceName }: InstanceDashboardProps) {
     fetchInstanceStatus()
     fetchStats()
 
-    const statusInterval = setInterval(fetchInstanceStatus, 10000) // Every 10 seconds instead of 30
+    // Set up periodic status checks
+    const statusInterval = setInterval(fetchInstanceStatus, 30000) // Every 30 seconds
     const statsInterval = setInterval(fetchStats, 60000) // Every minute
 
     return () => {

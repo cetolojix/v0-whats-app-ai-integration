@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { Plus, MessageSquare, Settings } from "lucide-react"
+import { LogOut, Plus, MessageSquare, Settings } from "lucide-react"
 import { PackageManagement } from "./package-management"
 import { InstanceLimitWarning } from "./instance-limit-warning"
 import { debugLog } from "@/lib/debug"
@@ -43,6 +44,7 @@ export function UserDashboard({ user, profile, instances }: UserDashboardProps) 
   const [packageInfo, setPackageInfo] = useState<PackageInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     fetchPackageInfo()
@@ -50,22 +52,22 @@ export function UserDashboard({ user, profile, instances }: UserDashboardProps) 
 
   const fetchPackageInfo = async () => {
     try {
-      const mockPackageInfo: PackageInfo = {
-        user_id: user.id,
-        package_name: "basic",
-        display_name_tr: "Temel Paket",
-        display_name_en: "Basic Package",
-        max_instances: 3,
-        current_instances: userInstances.length,
-        remaining_instances: Math.max(0, 3 - userInstances.length),
-        subscription_status: "active",
+      const response = await fetch("/api/user/package-info")
+      const data = await response.json()
+
+      if (response.ok) {
+        setPackageInfo(data.packageInfo)
       }
-      setPackageInfo(mockPackageInfo)
     } catch (error) {
       debugLog("Failed to fetch package info:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
   }
 
   const handleCreateInstance = () => {
@@ -78,8 +80,12 @@ export function UserDashboard({ user, profile, instances }: UserDashboardProps) 
 
   const handleDeleteInstance = async (instanceId: string) => {
     if (confirm("Are you sure you want to delete this instance?")) {
-      setUserInstances((prev) => prev.filter((instance) => instance.id !== instanceId))
-      fetchPackageInfo()
+      const { error } = await supabase.from("instances").delete().eq("id", instanceId)
+
+      if (!error) {
+        setUserInstances((prev) => prev.filter((instance) => instance.id !== instanceId))
+        fetchPackageInfo()
+      }
     }
   }
 
@@ -109,6 +115,10 @@ export function UserDashboard({ user, profile, instances }: UserDashboardProps) 
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Welcome, {profile?.full_name || user.email}</span>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>

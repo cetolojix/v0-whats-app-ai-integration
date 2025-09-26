@@ -1,12 +1,34 @@
 "use server"
 
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
+
 export async function updateInstanceStatus(instanceName: string, status: string) {
-  try {
-    // Mock implementation - no actual database operations
-    console.log("[v0] Mock update instance status:", instanceName, "to", status)
-    return { success: true }
-  } catch (error) {
-    console.error("[v0] Error updating instance status:", error)
-    throw new Error(`Failed to update instance status: ${error}`)
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    redirect("/auth/login")
   }
+
+  const { error } = await supabase
+    .from("instances")
+    .update({
+      status: status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("instance_name", instanceName)
+    .eq("user_id", user.id)
+
+  if (error) {
+    console.error("[v0] Error updating instance status in database:", error.message)
+    throw new Error(`Failed to update instance status: ${error.message}`)
+  }
+
+  console.log("[v0] Instance status updated to", status, "in database")
+  return { success: true }
 }

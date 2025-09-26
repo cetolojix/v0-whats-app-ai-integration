@@ -1,29 +1,65 @@
-export const dynamic = "force-dynamic"
-
 import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import { debugLog } from "@/lib/debug"
 
 export async function GET(request: NextRequest) {
   try {
-    const packageInfo = {
-      id: 1,
-      user_id: "mock-user-id",
-      package_id: 2,
-      package_name: "Professional",
-      package_display_tr: "Profesyonel",
-      package_display_en: "Professional",
-      max_instances: 10,
-      max_messages_per_month: 5000,
-      current_instances: 3,
-      current_messages_this_month: 1250,
-      status: "active",
-      started_at: "2024-01-01T00:00:00Z",
-      expires_at: null,
-      auto_renew: true,
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+
+    const { data: packageInfo, error } = await supabase
+      .from("user_package_info")
+      .select("*")
+      .eq("user_id", user.id)
+      .single()
+
+    if (error) {
+      debugLog("[v0] Error fetching user package info:", error)
+
+      if (error.code === "PGRST116") {
+        // No rows found
+        debugLog("[v0] No package info found, assigning basic package to user:", user.id)
+
+        // Get basic package
+        const { data: basicPackage } = await supabase.from("packages").select("id").eq("name", "basic").single()
+
+        if (basicPackage) {
+          // Create subscription for user
+          const { error: subscriptionError } = await supabase.from("user_subscriptions").insert({
+            user_id: user.id,
+            package_id: basicPackage.id,
+            status: "active",
+          })
+
+          if (!subscriptionError) {
+            // Retry getting package info
+            const { data: retryPackageInfo, error: retryError } = await supabase
+              .from("user_package_info")
+              .select("*")
+              .eq("user_id", user.id)
+              .single()
+
+            if (!retryError && retryPackageInfo) {
+              return NextResponse.json({ packageInfo: retryPackageInfo })
+            }
+          }
+        }
+      }
+
+      return NextResponse.json({ error: "Failed to fetch package information" }, { status: 500 })
     }
 
     return NextResponse.json({ packageInfo })
   } catch (error) {
-    console.error("[v0] Error in user package info API:", error)
+    debugLog("[v0] Error in user package info API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

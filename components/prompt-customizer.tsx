@@ -33,7 +33,6 @@ export function PromptCustomizer({ instanceName, onPromptChange }: PromptCustomi
   const [copied, setCopied] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [isLoadingCurrentPrompt, setIsLoadingCurrentPrompt] = useState(false)
 
   const fetchTemplates = async () => {
     try {
@@ -49,55 +48,6 @@ export function PromptCustomizer({ instanceName, onPromptChange }: PromptCustomi
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch templates"
       setError(errorMessage)
-    }
-  }
-
-  const fetchCurrentPrompt = async () => {
-    setIsLoadingCurrentPrompt(true)
-    setError("")
-
-    try {
-      console.log("[v0] Fetching current prompt for instance:", instanceName)
-
-      const response = await fetch("/api/n8n/get-workflow-prompt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          instanceName,
-        }),
-      })
-
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        // If it's not JSON, it's likely an HTML error page
-        const htmlText = await response.text()
-        console.error("[v0] Received HTML response instead of JSON:", htmlText.substring(0, 200))
-        throw new Error("Server returned an error page instead of JSON response")
-      }
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log("[v0] No existing workflow found, starting with empty prompt")
-          return
-        }
-        throw new Error(data.error || "Failed to fetch current prompt")
-      }
-
-      console.log("[v0] Current prompt fetched successfully")
-      setCustomPrompt(data.prompt)
-      onPromptChange?.(data.prompt)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch current prompt"
-      console.error("[v0] Error fetching current prompt:", errorMessage)
-      if (!errorMessage.includes("not found")) {
-        setError(errorMessage)
-      }
-    } finally {
-      setIsLoadingCurrentPrompt(false)
     }
   }
 
@@ -179,6 +129,7 @@ export function PromptCustomizer({ instanceName, onPromptChange }: PromptCustomi
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
 
+      // Also call the parent callback
       onPromptChange?.(customPrompt)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save prompt"
@@ -191,8 +142,7 @@ export function PromptCustomizer({ instanceName, onPromptChange }: PromptCustomi
 
   useEffect(() => {
     fetchTemplates()
-    fetchCurrentPrompt()
-  }, [instanceName])
+  }, [])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -225,13 +175,6 @@ export function PromptCustomizer({ instanceName, onPromptChange }: PromptCustomi
             <AlertDescription className="text-green-800">
               AI prompt saved successfully! Your WhatsApp bot will now use the new personality.
             </AlertDescription>
-          </Alert>
-        )}
-
-        {isLoadingCurrentPrompt && (
-          <Alert>
-            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <AlertDescription>Loading current prompt from workflow...</AlertDescription>
           </Alert>
         )}
 
@@ -276,13 +219,6 @@ export function PromptCustomizer({ instanceName, onPromptChange }: PromptCustomi
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Custom Prompt</label>
             <div className="flex gap-2">
-              <Button onClick={fetchCurrentPrompt} variant="outline" size="sm" disabled={isLoadingCurrentPrompt}>
-                {isLoadingCurrentPrompt ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                ) : (
-                  "Reload"
-                )}
-              </Button>
               <Button onClick={copyPrompt} variant="outline" size="sm" disabled={!customPrompt}>
                 {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>

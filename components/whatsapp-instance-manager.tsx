@@ -5,19 +5,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, MessageSquare, Bot, Loader2 } from "lucide-react"
+import { Settings, TestTube, Workflow, Bot, Plus, MessageSquare, CheckCircle, LogOut } from "lucide-react"
 import { InstanceSetup } from "@/components/instance-setup"
 import { QRCodeDisplay } from "@/components/qr-code-display"
+import { WorkflowManager } from "@/components/workflow-manager"
 import { AIChatTester } from "@/components/ai-chat-tester"
+import { PromptCustomizer } from "@/components/prompt-customizer"
+import { InstanceDashboard } from "@/components/instance-dashboard"
 import { InstanceManagement } from "@/components/instance-management"
 import { FeatureShowcase } from "@/components/feature-showcase"
 import { ProgressSteps } from "@/components/progress-steps"
 import { getTranslation, type Translations } from "@/lib/i18n"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { updateInstanceStatus } from "@/app/actions/update-instance-status"
 import { deleteInstance } from "@/app/actions/delete-instance"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Instance {
   id: string
@@ -50,12 +52,8 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
   const [selectedInstance, setSelectedInstance] = useState<string>("")
   const [language, setLanguage] = useState("tr")
   const [t, setT] = useState<Translations>(getTranslation("tr"))
-  const [currentPrompt, setCurrentPrompt] = useState("")
-  const [isLoadingPrompt, setIsLoadingPrompt] = useState(false)
-  const [isSavingPrompt, setIsSavingPrompt] = useState(false)
-  const [promptError, setPromptError] = useState("")
-  const [promptSuccess, setPromptSuccess] = useState("")
   const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem("preferred-language") || "tr"
@@ -91,11 +89,10 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
     loadInstancesFromDatabase()
   }, [instances])
 
-  useEffect(() => {
-    if (selectedInstance) {
-      loadCurrentPrompt(selectedInstance)
-    }
-  }, [selectedInstance])
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+  }
 
   const handleInstanceConnected = async (connectedInstanceName: string) => {
     console.log("[v0] handleInstanceConnected called with:", connectedInstanceName)
@@ -127,11 +124,7 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
 
     setActiveInstanceName(connectedInstanceName)
     setSelectedInstance(connectedInstanceName)
-
-    setTimeout(() => {
-      console.log("[v0] Transitioning to connected state for:", connectedInstanceName)
-      setCurrentStep("connected")
-    }, 2000) // Reduced from 5000ms to 2000ms
+    setCurrentStep("connected")
   }
 
   const handleCreateNewInstance = () => {
@@ -177,77 +170,6 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
     localStorage.setItem("preferred-language", newLanguage)
   }
 
-  const loadCurrentPrompt = async (instanceName: string) => {
-    setIsLoadingPrompt(true)
-    setPromptError("")
-
-    try {
-      const response = await fetch("/api/n8n/get-workflow-prompt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ instanceName }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setCurrentPrompt(data.prompt || "")
-      } else {
-        // Prompt bulunamazsa varsayılan prompt kullan
-        setCurrentPrompt(`Sen ${instanceName} için akıllı bir WhatsApp asistanısın. 
-
-Görevin:
-- Kullanıcılara yardımcı olmak
-- Sorularını yanıtlamak
-- Profesyonel ve dostane bir dil kullanmak
-- Türkçe konuşmak
-
-Her zaman nazik ve yardımsever ol.`)
-      }
-    } catch (error) {
-      console.error("Prompt yüklenirken hata:", error)
-      setPromptError("Prompt yüklenemedi")
-    } finally {
-      setIsLoadingPrompt(false)
-    }
-  }
-
-  const savePrompt = async () => {
-    if (!selectedInstance || !currentPrompt.trim()) return
-
-    setIsSavingPrompt(true)
-    setPromptError("")
-    setPromptSuccess("")
-
-    try {
-      const response = await fetch("/api/n8n/update-workflow-prompt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          instanceName: selectedInstance,
-          customPrompt: currentPrompt,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setPromptSuccess("AI prompt başarıyla kaydedildi!")
-        setTimeout(() => setPromptSuccess(""), 3000)
-      } else {
-        setPromptError(data.error || "Prompt kaydedilemedi")
-      }
-    } catch (error) {
-      console.error("Prompt kaydedilirken hata:", error)
-      setPromptError("Prompt kaydedilemedi")
-    } finally {
-      setIsSavingPrompt(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <header className="bg-white border-b border-gray-200">
@@ -262,6 +184,10 @@ Her zaman nazik ve yardımsever ol.`)
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Hoş geldiniz, {profile?.full_name || user.email}</span>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Çıkış
+              </Button>
             </div>
           </div>
         </div>
@@ -329,16 +255,28 @@ Her zaman nazik ve yardımsever ol.`)
             {connectedInstances.length > 0 && currentStep !== "setup" && currentStep !== "qr" && (
               <div className="space-y-8 animate-fade-in">
                 {selectedInstance && (
-                  <Tabs defaultValue="ai-prompt" className="space-y-8">
+                  <Tabs defaultValue="dashboard" className="space-y-8">
                     <div className="flex items-center justify-between">
-                      <TabsList className="grid w-full max-w-lg grid-cols-2 h-12 bg-muted/50 backdrop-blur-sm">
-                        <TabsTrigger value="ai-prompt" className="gap-2 font-medium">
+                      <TabsList className="grid w-full max-w-3xl grid-cols-5 h-12 bg-muted/50 backdrop-blur-sm">
+                        <TabsTrigger value="dashboard" className="gap-2 font-medium">
+                          <Settings className="h-4 w-4" />
+                          <span className="hidden sm:inline">{t.dashboard}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="workflows" className="gap-2 font-medium">
+                          <Workflow className="h-4 w-4" />
+                          <span className="hidden sm:inline">{t.automations}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="ai-config" className="gap-2 font-medium">
                           <Bot className="h-4 w-4" />
-                          <span>AI Prompt</span>
+                          <span className="hidden sm:inline">{t.aiSettings}</span>
                         </TabsTrigger>
                         <TabsTrigger value="test-chat" className="gap-2 font-medium">
-                          <MessageSquare className="h-4 w-4" />
-                          <span>Test Sohbet</span>
+                          <TestTube className="h-4 w-4" />
+                          <span className="hidden sm:inline">{t.testChat}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="settings" className="gap-2 font-medium">
+                          <Settings className="h-4 w-4" />
+                          <span className="hidden sm:inline">{t.settings}</span>
                         </TabsTrigger>
                       </TabsList>
                       <Badge variant="outline" className="gap-2 px-4 py-2 font-medium border-primary/20 text-primary">
@@ -347,80 +285,81 @@ Her zaman nazik ve yardımsever ol.`)
                       </Badge>
                     </div>
 
-                    <TabsContent value="ai-prompt" className="space-y-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Bot className="h-5 w-5" />
-                            AI Agent Prompt Ayarları
-                          </CardTitle>
-                          <CardDescription>
-                            AI asistanınızın nasıl davranacağını ve hangi görevleri yerine getireceğini belirleyin. Bu
-                            prompt hem WhatsApp mesajları hem de test sohbeti için kullanılacak.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {isLoadingPrompt ? (
-                            <div className="flex items-center justify-center py-8">
-                              <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                              <span>Mevcut prompt yükleniyor...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">AI Agent Prompt</label>
-                                <Textarea
-                                  placeholder="AI asistanınızın rolünü ve görevlerini tanımlayın..."
-                                  value={currentPrompt}
-                                  onChange={(e) => setCurrentPrompt(e.target.value)}
-                                  className="min-h-[200px] resize-none"
-                                  disabled={isSavingPrompt}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Örnek: "Sen müşteri hizmetleri asistanısın. Ürünlerimiz hakkında bilgi ver,
-                                  siparişleri takip et ve müşterilere yardım et."
-                                </p>
-                              </div>
+                    <TabsContent value="dashboard" className="space-y-6">
+                      <InstanceDashboard instanceName={selectedInstance} />
+                    </TabsContent>
 
-                              {promptError && (
-                                <Alert variant="destructive">
-                                  <AlertDescription>{promptError}</AlertDescription>
-                                </Alert>
-                              )}
+                    <TabsContent value="workflows" className="space-y-6">
+                      <WorkflowManager instanceName={selectedInstance} />
+                    </TabsContent>
 
-                              {promptSuccess && (
-                                <Alert className="border-green-200 bg-green-50">
-                                  <AlertDescription className="text-green-800">{promptSuccess}</AlertDescription>
-                                </Alert>
-                              )}
-
-                              <div className="flex justify-end">
-                                <Button
-                                  onClick={savePrompt}
-                                  disabled={!currentPrompt.trim() || isSavingPrompt}
-                                  className="gap-2"
-                                >
-                                  {isSavingPrompt ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      Kaydediliyor...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Bot className="h-4 w-4" />
-                                      Prompt'u Kaydet
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </CardContent>
-                      </Card>
+                    <TabsContent value="ai-config" className="space-y-6">
+                      <PromptCustomizer instanceName={selectedInstance} onPromptChange={setCustomPrompt} />
                     </TabsContent>
 
                     <TabsContent value="test-chat" className="space-y-6">
                       <AIChatTester instanceName={selectedInstance} />
+                    </TabsContent>
+
+                    <TabsContent value="settings" className="space-y-6">
+                      <div className="grid gap-8 md:grid-cols-2">
+                        <Card className="border-0 bg-card/50 backdrop-blur-sm card-hover">
+                          <CardHeader>
+                            <CardTitle className="text-lg font-semibold">{t.instanceSettings}</CardTitle>
+                            <CardDescription>{t.instanceSettingsDesc}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            <div className="space-y-3">
+                              <label className="text-sm font-semibold text-foreground">{t.instanceName}</label>
+                              <div className="p-3 bg-muted/50 rounded-lg border font-mono text-sm">
+                                {selectedInstance}
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <label className="text-sm font-semibold text-foreground">{t.status}</label>
+                              <Badge variant="default" className="gap-2 px-3 py-1.5">
+                                <CheckCircle className="h-4 w-4" />
+                                {t.connected}
+                              </Badge>
+                            </div>
+                            <Button
+                              onClick={handleCreateNewInstance}
+                              variant="outline"
+                              className="w-full gap-2 h-11 font-medium bg-transparent"
+                            >
+                              <Plus className="h-4 w-4" />
+                              {t.addNewBot}
+                            </Button>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-0 bg-card/50 backdrop-blur-sm card-hover">
+                          <CardHeader>
+                            <CardTitle className="text-lg font-semibold">{t.apiConfiguration}</CardTitle>
+                            <CardDescription>{t.apiConfigurationDesc}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            <div className="space-y-3">
+                              <label className="text-sm font-semibold text-foreground">{t.messagingService}</label>
+                              <div className="p-3 bg-muted/50 rounded-lg border text-sm font-mono break-all">
+                                https://evolu.cetoloji.com
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <label className="text-sm font-semibold text-foreground">{t.automationPlatform}</label>
+                              <div className="p-3 bg-muted/50 rounded-lg border text-sm font-mono break-all">
+                                https://n8nx.cetoloji.com
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <label className="text-sm font-semibold text-foreground">{t.webhookUrl}</label>
+                              <div className="p-3 bg-muted/50 rounded-lg border text-sm font-mono break-all">
+                                /api/webhooks/whatsapp/{selectedInstance}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
                     </TabsContent>
                   </Tabs>
                 )}

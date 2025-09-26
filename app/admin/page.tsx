@@ -1,54 +1,59 @@
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
 import { AdminDashboard } from "@/components/admin-dashboard"
+import { debugLog } from "@/lib/debug"
 
 export default async function AdminPage() {
-  // Mock admin user
-  const mockUser = {
-    id: "admin-1",
-    email: "admin@example.com",
-    role: "admin",
+  const supabase = await createClient()
+
+  debugLog("[v0] Admin page accessed")
+
+  // Check if user is authenticated
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  debugLog("[v0] User authentication check:", { user: user?.email, error })
+
+  if (error || !user) {
+    debugLog("[v0] User not authenticated, redirecting to login")
+    redirect("/auth/login")
   }
 
-  // Mock users data
-  const mockUsers = [
-    {
-      id: "user-1",
-      email: "user1@example.com",
-      full_name: "User One",
-      role: "user",
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: "user-2",
-      email: "user2@example.com",
-      full_name: "User Two",
-      role: "user",
-      created_at: new Date().toISOString(),
-    },
-  ]
+  // Check if user is admin
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
 
-  // Mock instances data
-  const mockInstances = [
-    {
-      id: "instance-1",
-      name: "WhatsApp Bot 1",
-      status: "active",
-      user_id: "user-1",
-      user_email: "user1@example.com",
-      user_full_name: "User One",
-      user_role: "user",
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: "instance-2",
-      name: "WhatsApp Bot 2",
-      status: "inactive",
-      user_id: "user-2",
-      user_email: "user2@example.com",
-      user_full_name: "User Two",
-      user_role: "user",
-      created_at: new Date().toISOString(),
-    },
-  ]
+  debugLog("[v0] Profile check:", { profile, profileError, userId: user.id })
 
-  return <AdminDashboard users={mockUsers} instances={mockInstances} currentUser={mockUser} />
+  if (!profile || profile.role !== "admin") {
+    debugLog("[v0] User is not admin, redirecting to dashboard. Profile:", profile)
+    redirect("/dashboard")
+  }
+
+  debugLog("[v0] User is admin, fetching data")
+
+  // Fetch all users and instances for admin
+  const { data: users, error: usersError } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  const { data: instances, error: instancesError } = await supabase
+    .from("admin_instances_view")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  debugLog("[v0] Data fetched:", {
+    usersCount: users?.length,
+    instancesCount: instances?.length,
+    usersError,
+    instancesError,
+  })
+
+  return <AdminDashboard users={users || []} instances={instances || []} currentUser={user} />
 }

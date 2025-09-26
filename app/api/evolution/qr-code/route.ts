@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-export const dynamic = "force-dynamic"
-
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
 
 const EVOLUTION_API_KEY = "hvsctnOWysGzOGHea8tEzV2iHCGr9H4L"
@@ -41,17 +39,11 @@ export async function GET(request: NextRequest) {
 
     // If already connected, return status instead of QR
     if (statusData.instance?.state === "open") {
-      console.log("[v0] Instance is already connected, returning success status")
-      return NextResponse.json(
-        {
-          success: true,
-          status: "already_connected",
-          message: "Instance is already connected to WhatsApp",
-          instanceName,
-          connected: true,
-        },
-        { status: 200 },
-      )
+      return NextResponse.json({
+        success: true,
+        status: "already_connected",
+        message: "Instance is already connected to WhatsApp",
+      })
     }
 
     // Get QR code from Evolution API v2

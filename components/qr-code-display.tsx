@@ -10,7 +10,7 @@ import { getTranslation } from "@/lib/i18n"
 
 interface QRCodeDisplayProps {
   instanceName: string
-  onConnected: (connectedInstanceName: string, isConnectionComplete: boolean) => void
+  onConnected: (connectedInstanceName: string) => void
   language?: string
 }
 
@@ -27,9 +27,6 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
   const [countdown, setCountdown] = useState(60)
   const [retryCount, setRetryCount] = useState(0)
   const [isCleaningUp, setIsCleaningUp] = useState(false)
-  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false)
-  const [workflowError, setWorkflowError] = useState("")
-  const [isConnectionComplete, setIsConnectionComplete] = useState(false)
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const t = getTranslation(language)
@@ -68,14 +65,6 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
       const data = await response.json()
 
       if (!response.ok) {
-        // Check if instance is already connected
-        if (data.status === "already_connected") {
-          console.log(`[v0] Instance ${instanceName} is already connected, transitioning to connected state`)
-          setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
-          setIsConnectionComplete(true)
-          onConnected(instanceName, true)
-          return
-        }
         throw new Error(data.error || "Failed to generate QR code")
       }
 
@@ -100,7 +89,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
     } finally {
       setIsLoading(false)
     }
-  }, [instanceName, retryCount, cleanupOldInstances, onConnected])
+  }, [instanceName, retryCount, cleanupOldInstances])
 
   const checkExistingConnections = useCallback(async () => {
     try {
@@ -110,32 +99,16 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
 
       console.log(`[v0] checkExistingConnections response:`, data)
 
-      if (response.ok && data.success) {
-        const isConnectedViaStatus = data.status === "connected"
-        const isConnectedViaState = data.details?.state === "open" || data.details?.state === "connected"
+      if (response.ok && data.instance) {
+        const state = data.instance.state
+        console.log(`[v0] User's instance "${instanceName}" state: ${state}`)
 
-        console.log(`[v0] Connection check - status: ${data.status}, state: ${data.details?.state}`)
-
-        if (isConnectedViaStatus || isConnectedViaState) {
+        if (state === "open" || state === "connected") {
           console.log(`[v0] User's instance "${instanceName}" is already connected!`)
           setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
 
           console.log(`[v0] Calling onConnected for user's instance: ${instanceName}`)
-          onConnected(instanceName, false)
-          return true
-        }
-      }
-
-      if (response.ok && data.instance) {
-        const state = data.instance.state
-        console.log(`[v0] Legacy format - User's instance "${instanceName}" state: ${state}`)
-
-        if (state === "open" || state === "connected") {
-          console.log(`[v0] User's instance "${instanceName}" is already connected via legacy format!`)
-          setConnectionStatus({ status: "connected", lastSeen: new Date().toISOString() })
-
-          console.log(`[v0] Calling onConnected for user's instance: ${instanceName}`)
-          onConnected(instanceName, false)
+          onConnected(instanceName)
           return true
         }
       }
@@ -178,16 +151,11 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
           }
 
           console.log(`[v0] Calling onConnected callback for ${instanceName}`)
+          onConnected(instanceName)
 
-          try {
-            await createAutomationWorkflow()
-            setIsConnectionComplete(true)
-            onConnected(instanceName, true)
-          } catch (err) {
-            console.error("[v0] Workflow creation failed, but connection successful:", err)
-            setIsConnectionComplete(true)
-            onConnected(instanceName, true)
-          }
+          setTimeout(() => {
+            createAutomationWorkflow().catch((err) => console.error("[v0] Workflow creation failed:", err))
+          }, 1000)
 
           return true
         } else if (response.ok && data.instance) {
@@ -205,16 +173,11 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
             }
 
             console.log(`[v0] Calling onConnected callback for ${instanceName}`)
+            onConnected(instanceName)
 
-            try {
-              await createAutomationWorkflow()
-              setIsConnectionComplete(true)
-              onConnected(instanceName, true)
-            } catch (err) {
-              console.error("[v0] Workflow creation failed, but connection successful:", err)
-              setIsConnectionComplete(true)
-              onConnected(instanceName, true)
-            }
+            setTimeout(() => {
+              createAutomationWorkflow().catch((err) => console.error("[v0] Workflow creation failed:", err))
+            }, 1000)
 
             return true
           } else if (state === "close") {
@@ -284,37 +247,21 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
 
   const createAutomationWorkflow = async () => {
     try {
-      console.log("[v0] Creating automation workflow for:", instanceName)
-      setIsCreatingWorkflow(true)
-      setWorkflowError("")
-
       const response = await fetch("/api/n8n/create-workflow", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          instanceName: instanceName,
-          workflowType: "advanced-ai",
-        }),
+        body: JSON.stringify({ instanceName: instanceName }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to create workflow`)
+        throw new Error("Failed to create automation workflow")
       }
 
-      const data = await response.json()
-      console.log("[v0] Workflow created successfully:", data)
-
-      return data
+      console.log("n8n workflow created successfully")
     } catch (err) {
-      console.error("[v0] Error creating workflow:", err)
-      const errorMessage = err instanceof Error ? err.message : "Failed to create workflow"
-      setWorkflowError(errorMessage)
-      throw err // Re-throw error to handle it in the calling function
-    } finally {
-      setIsCreatingWorkflow(false)
+      console.error("Error creating workflow:", err)
     }
   }
 
@@ -425,7 +372,7 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                 />
               </div>
 
-              {connectionStatus.status === "connecting" && !isConnectionComplete && (
+              {connectionStatus.status === "connecting" && (
                 <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
@@ -449,115 +396,102 @@ export function QRCodeDisplay({ instanceName, onConnected, language = "tr" }: QR
                       {language === "tr" ? "Bağlandı!" : "Connected!"}
                     </p>
                   </div>
-                  {isCreatingWorkflow ? (
-                    <div className="flex items-center justify-center gap-2 mt-2">
-                      <RefreshCw className="h-3 w-3 animate-spin text-green-600" />
-                      <p className="text-xs text-green-600">
-                        {language === "tr" ? "AI otomasyonu kuruluyor..." : "Setting up AI automation..."}
-                      </p>
-                    </div>
-                  ) : workflowError ? (
-                    <div className="mt-2">
-                      <p className="text-xs text-orange-600">
-                        {language === "tr" ? "Otomasyon kurulumunda sorun oluştu" : "Automation setup failed"}
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        {language === "tr"
-                          ? "WhatsApp bağlantısı başarılı! Panel yükleniyor..."
-                          : "WhatsApp connected! Loading dashboard..."}
-                      </p>
-                    </div>
-                  ) : isConnectionComplete ? (
-                    <p className="text-xs text-green-600 mt-1">
-                      {language === "tr"
-                        ? "Kurulum tamamlandı! Panel yükleniyor..."
-                        : "Setup complete! Loading dashboard..."}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-green-600 mt-1">
-                      {language === "tr" ? "AI otomasyonu hazırlanıyor..." : "Preparing AI automation..."}
-                    </p>
-                  )}
+                  <p className="text-xs text-green-600 mt-1">
+                    {language === "tr" ? "AI otomasyonu kuruluyor..." : "Setting up AI automation..."}
+                  </p>
                 </div>
               )}
             </div>
           ) : null}
         </div>
 
-        {workflowError && (
-          <Alert variant="default" className="border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              {language === "tr" ? "Otomasyon Uyarısı: " : "Automation Warning: "}
-              {workflowError}
-              <span className="block mt-1 text-xs">
-                {language === "tr"
-                  ? "WhatsApp bağlantısı başarılı, otomasyonu manuel olarak kurabilirsiniz."
-                  : "WhatsApp connection successful, you can set up automation manually."}
-              </span>
+        {connectionStatus.status === "disconnected" && countdown > 0 && !error && (
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              {language === "tr" ? (
+                <>
+                  QR kod <span className="font-medium text-foreground">{countdown}</span> saniye içinde sona erecek
+                </>
+              ) : (
+                <>
+                  QR code expires in <span className="font-medium text-foreground">{countdown}</span> seconds
+                </>
+              )}
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+              {retryCount < maxRetries && (
+                <span className="block mt-1 text-xs">
+                  {language === "tr"
+                    ? `Otomatik yeniden deneniyor... (${retryCount}/${maxRetries})`
+                    : `Retrying automatically... (${retryCount}/${maxRetries})`}
+                </span>
+              )}
             </AlertDescription>
           </Alert>
         )}
 
-        {!isConnectionComplete && connectionStatus.status !== "connected" && (
-          <div className="flex gap-2">
-            <Button
-              onClick={generateQRCode}
-              variant="outline"
-              disabled={isLoading || isCleaningUp}
-              className="flex-1 bg-transparent"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {language === "tr" ? "Yeni QR Kod" : "New QR Code"}
-            </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={generateQRCode}
+            variant="outline"
+            disabled={isLoading || connectionStatus.status === "connected" || isCleaningUp}
+            className="flex-1 bg-transparent"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {language === "tr" ? "Yeni QR Kod" : "New QR Code"}
+          </Button>
 
-            <Button
-              onClick={cleanupOldInstances}
-              variant="ghost"
-              size="sm"
-              disabled={isCleaningUp}
-              title={language === "tr" ? "Eski bağlantıları temizle" : "Clean up old instances"}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+          <Button
+            onClick={cleanupOldInstances}
+            variant="ghost"
+            size="sm"
+            disabled={isCleaningUp}
+            title={language === "tr" ? "Eski bağlantıları temizle" : "Clean up old instances"}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
 
-        {!isConnectionComplete && (
-          <div className="rounded-lg bg-muted/50 p-3">
-            <h4 className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Smartphone className="h-4 w-4" />
-              {language === "tr" ? "Nasıl taranır:" : "How to scan:"}
-            </h4>
-            <ol className="mt-2 space-y-1 text-xs text-muted-foreground">
-              {language === "tr" ? (
-                <>
-                  <li>1. Telefonunuzda WhatsApp'ı açın</li>
-                  <li>2. Menü (⋮) → Bağlı cihazlar'a dokunun</li>
-                  <li>3. "Cihaz bağla"ya dokunun</li>
-                  <li>4. Kameranızı bu QR koda doğrultun</li>
-                  <li>5. Bağlantı onayını bekleyin</li>
-                </>
-              ) : (
-                <>
-                  <li>1. Open WhatsApp on your phone</li>
-                  <li>2. Tap Menu (⋮) → Linked devices</li>
-                  <li>3. Tap "Link a device"</li>
-                  <li>4. Point your camera at this QR code</li>
-                  <li>5. Wait for connection confirmation</li>
-                </>
-              )}
-            </ol>
-          </div>
-        )}
+        <div className="rounded-lg bg-muted/50 p-3">
+          <h4 className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Smartphone className="h-4 w-4" />
+            {language === "tr" ? "Nasıl taranır:" : "How to scan:"}
+          </h4>
+          <ol className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {language === "tr" ? (
+              <>
+                <li>1. Telefonunuzda WhatsApp'ı açın</li>
+                <li>2. Menü (⋮) → Bağlı cihazlar'a dokunun</li>
+                <li>3. "Cihaz bağla"ya dokunun</li>
+                <li>4. Kameranızı bu QR koda doğrultun</li>
+                <li>5. Bağlantı onayını bekleyin</li>
+              </>
+            ) : (
+              <>
+                <li>1. Open WhatsApp on your phone</li>
+                <li>2. Tap Menu (⋮) → Linked devices</li>
+                <li>3. Tap "Link a device"</li>
+                <li>4. Point your camera at this QR code</li>
+                <li>5. Wait for connection confirmation</li>
+              </>
+            )}
+          </ol>
+        </div>
 
-        {isConnectionComplete && (
+        {connectionStatus.status === "connected" && connectionStatus.lastSeen && (
           <div className="rounded-lg bg-green-50 p-3 text-center">
             <p className="text-sm font-medium text-green-800">
               {language === "tr" ? "WhatsApp Başarıyla Bağlandı!" : "WhatsApp Connected Successfully!"}
             </p>
             <p className="text-xs text-green-600 mt-1">
-              {language === "tr" ? "Kontrol paneline yönlendiriliyorsunuz..." : "Redirecting to dashboard..."}
+              {language === "tr" ? "AI otomasyonu yapılandırılıyor..." : "AI automation is being configured..."}
             </p>
           </div>
         )}
