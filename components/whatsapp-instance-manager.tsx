@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, TestTube, Bot, Plus, MessageSquare, LogOut } from "lucide-react"
 import { InstanceSetup } from "@/components/instance-setup"
 import { QRCodeDisplay } from "@/components/qr-code-display"
-import { AIChatTester } from "@/components/ai-chat-tester"
 import { PromptCustomizer } from "@/components/prompt-customizer"
 import { InstanceDashboard } from "@/components/instance-dashboard"
 import { InstanceManagement } from "@/components/instance-management"
@@ -19,6 +18,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { updateInstanceStatus } from "@/app/actions/update-instance-status"
 import { deleteInstance } from "@/app/actions/delete-instance"
+import { YapayZekaChatTester } from "@/components/yapay-zeka-chat-tester"
 
 interface Instance {
   id: string
@@ -328,7 +328,7 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
                             </span>
                           </p>
                         </div>
-                        <AIChatTester instanceName={selectedInstance} customPrompt={customPrompt} />
+                        <YapayZekaChatTester instanceName={selectedInstance} customPrompt={customPrompt} />
                       </div>
                     </TabsContent>
                   </Tabs>

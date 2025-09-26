@@ -30,13 +30,34 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
   const [conversationId, setConversationId] = useState("")
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]")
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
+    }
+  }
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    const timer = setTimeout(() => {
+      scrollToBottom()
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [messages])
+
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        scrollToBottom()
+      }, 100)
+
+      return () => clearTimeout(timer)
     }
-  }, [messages, isLoading])
+  }, [isLoading])
 
   const sendMessage = async () => {
     if (!currentMessage.trim() || isLoading) return
@@ -47,10 +68,15 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
       timestamp: Date.now(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const messageToSend = currentMessage
     setCurrentMessage("")
+    setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
     setError("")
+
+    setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 0)
 
     try {
       const response = await fetch("/api/ai/chat", {
@@ -60,7 +86,7 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
         },
         body: JSON.stringify({
           instanceName,
-          message: currentMessage,
+          message: messageToSend,
           sender: "test-user",
           conversationId: conversationId || undefined,
           customPrompt: customPrompt || undefined,
@@ -86,6 +112,9 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
       setError(errorMessage)
     } finally {
       setIsLoading(false)
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100)
     }
   }
 
@@ -102,8 +131,12 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
     }
   }
 
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
+
   return (
-    <Card className="hologram-card h-[700px] flex flex-col border-0 bg-background/30 backdrop-blur-sm shadow-2xl">
+    <Card className="hologram-card flex flex-col border-0 bg-background/30 backdrop-blur-sm shadow-2xl h-[600px] md:h-[700px]">
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
@@ -138,12 +171,12 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-4 min-h-0">
-        <div className="flex-1 border border-border/50 rounded-xl bg-background/20 backdrop-blur-sm overflow-hidden">
+      <CardContent className="flex-1 flex flex-col gap-4 p-6 min-h-0">
+        <div className="flex-1 border border-border/50 rounded-xl bg-background/20 backdrop-blur-sm relative min-h-0">
           <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="p-4">
+            <div className="p-4 pb-6">
               {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-[400px] text-center">
+                <div className="flex items-center justify-center min-h-[300px] md:min-h-[400px] text-center">
                   <div>
                     <Bot className="mx-auto h-16 w-16 text-neon-cyan mb-6 opacity-80" />
                     <h3 className="text-2xl font-bold text-foreground mb-3">Sohbeti Başlatın</h3>
@@ -160,7 +193,9 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
                       key={index}
                       className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
-                      <div className={`flex gap-3 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                      <div
+                        className={`flex gap-3 max-w-[85%] sm:max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}
+                      >
                         <div
                           className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg ${
                             message.role === "user"
@@ -171,13 +206,13 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
                           {message.role === "user" ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                         </div>
                         <div
-                          className={`rounded-2xl px-4 py-3 shadow-lg backdrop-blur-sm ${
+                          className={`rounded-2xl px-4 py-3 shadow-lg backdrop-blur-sm break-words ${
                             message.role === "user"
                               ? "bg-gradient-to-br from-neon-blue/20 to-neon-purple/20 text-foreground border border-neon-blue/30"
                               : "bg-background/50 text-foreground border border-border/50"
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed break-words">{message.content}</p>
                           <p className="text-xs opacity-70 mt-2">
                             {new Date(message.timestamp).toLocaleTimeString("tr-TR")}
                           </p>
@@ -200,7 +235,6 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
                       </div>
                     </div>
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
@@ -213,19 +247,24 @@ export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaCha
           </Alert>
         )}
 
-        <div className="flex gap-3 flex-shrink-0">
-          <Textarea
-            placeholder="Mesajınızı buraya yazın... (Göndermek için Enter'a basın)"
-            value={currentMessage}
-            onChange={(e) => setCurrentMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={isLoading}
-            className="min-h-[60px] max-h-[120px] resize-none bg-background/50 border-border/50 backdrop-blur-sm focus:border-neon-cyan/50 focus:ring-neon-cyan/20"
-          />
+        <div className="flex gap-3 flex-shrink-0 items-end">
+          <div className="flex-1">
+            <Textarea
+              ref={textareaRef}
+              placeholder="Mesajınızı buraya yazın... (Göndermek için Enter'a basın)"
+              value={currentMessage}
+              onChange={(e) => setCurrentMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={isLoading}
+              rows={2}
+              className="resize-none bg-background/50 border-border/50 backdrop-blur-sm focus:border-neon-cyan/50 focus:ring-neon-cyan/20 transition-all duration-200"
+              style={{ minHeight: "60px", maxHeight: "60px" }}
+            />
+          </div>
           <Button
             onClick={sendMessage}
             disabled={!currentMessage.trim() || isLoading}
-            className="tech-button px-4 py-2 text-white shadow-lg shadow-neon-blue/30 self-end"
+            className="tech-button px-4 py-3 text-white shadow-lg shadow-neon-blue/30 h-[60px] flex-shrink-0"
           >
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>
