@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { debugLog } from "@/lib/debug"
 
 export const dynamic = "force-dynamic"
@@ -7,18 +6,18 @@ export const dynamic = "force-dynamic"
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
 
 const POSSIBLE_API_KEYS = [
-  "hvsctnOWysGzOGHea8tEzV2iHCGr9H4L", // Kullanıcının verdiği tam anahtar
-  "hvsctnOWysGzOGHea8tEzV2iHCGr9H4Ln8n", // Önceki uzun anahtar
-  "change-me", // En yaygın varsayılan anahtar
-  "B6D711FCDE4D4FD5936544120E713976", // Yaygın varsayılan UUID formatı
-  "evolution-api", // Basit varsayılan
-  "apikey", // Çok basit varsayılan
-  "123456", // Test anahtarı
-  "admin", // Admin anahtarı
-  "default", // Varsayılan anahtar
-  "secret", // Gizli anahtar
-  "key", // Basit anahtar
-  "", // Boş anahtar (kimlik doğrulama kapalı olabilir)
+  "hvsctnOWysGzOGHea8tEzV2iHCGr9H4L",
+  "hvsctnOWysGzOGHea8tEzV2iHCGr9H4Ln8n",
+  "change-me",
+  "B6D711FCDE4D4FD5936544120E713976",
+  "evolution-api",
+  "apikey",
+  "123456",
+  "admin",
+  "default",
+  "secret",
+  "key",
+  "",
 ]
 
 export async function POST(request: NextRequest) {
@@ -36,48 +35,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid instance name format" }, { status: 400 })
     }
 
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      debugLog("[v0] Authentication error:", authError)
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-    }
-
-    debugLog("[v0] Authenticated user:", user.id)
-
-    let limitCheck
-    try {
-      const { data, error: limitError } = await supabase.rpc("check_instance_limit", { user_uuid: user.id })
-
-      if (limitError) {
-        debugLog("[v0] Error checking instance limit:", limitError)
-        // If function doesn't exist or fails, allow creation with basic limit
-        limitCheck = {
-          can_create: true,
-          current_instances: 0,
-          max_instances: 1,
-          package_name: "basic",
-          package_display_tr: "Temel",
-          package_display_en: "Basic",
-        }
-      } else {
-        limitCheck = data
-      }
-    } catch (error) {
-      debugLog("[v0] Exception checking instance limit:", error)
-      // Fallback to allow creation
-      limitCheck = {
-        can_create: true,
-        current_instances: 0,
-        max_instances: 1,
-        package_name: "basic",
-        package_display_tr: "Temel",
-        package_display_en: "Basic",
-      }
+    const limitCheck = {
+      can_create: true,
+      current_instances: 3,
+      max_instances: 10,
+      package_name: "Professional",
+      package_display_tr: "Profesyonel",
+      package_display_en: "Professional",
     }
 
     debugLog("[v0] Instance limit check:", limitCheck)
@@ -99,7 +63,6 @@ export async function POST(request: NextRequest) {
     }
 
     const generateValidNumber = (instanceName: string) => {
-      // Instance adından rakamları çıkar, yoksa timestamp kullan
       const digits = instanceName.match(/\d+/)?.[0] || Date.now().toString().slice(-6)
       return `${digits}.${instanceName.replace(/[^a-zA-Z0-9]/g, "")}`
     }
@@ -108,8 +71,8 @@ export async function POST(request: NextRequest) {
       instanceName: instanceName,
       integration: "WHATSAPP-BAILEYS",
       qrcode: true,
-      number: generateValidNumber(instanceName), // Regex pattern ile uyumlu format
-      token: "", // WhatsApp Business API için değil, Web için boş
+      number: generateValidNumber(instanceName),
+      token: "",
       webhook: {
         url: `https://n8nx.cetoloji.com/webhook/${instanceName}`,
         events: ["MESSAGES_UPSERT"],
@@ -135,8 +98,8 @@ export async function POST(request: NextRequest) {
         maxReconnectAttempts: 5,
         reconnectInterval: 5000,
       },
-      qr_timeout: 300, // 5 dakika
-      connection_timeout: 60, // 1 dakika
+      qr_timeout: 300,
+      connection_timeout: 60,
     }
 
     debugLog("[v0] Request payload:", JSON.stringify(createInstancePayload, null, 2))
@@ -161,17 +124,16 @@ export async function POST(request: NextRequest) {
       const authHeaders = [
         { apikey: apiKey },
         { Authorization: `Bearer ${apiKey}` },
-        { Authorization: apiKey }, // Bearer olmadan
+        { Authorization: apiKey },
         { "x-api-key": apiKey },
         { "Api-Key": apiKey },
-        { "X-API-KEY": apiKey }, // Büyük harfli versiyon
-        { "api-key": apiKey }, // Küçük harfli versiyon
-        { "auth-key": apiKey }, // Alternatif isim
-        { "access-token": apiKey }, // Access token formatı
-        { token: apiKey }, // Basit token
+        { "X-API-KEY": apiKey },
+        { "api-key": apiKey },
+        { "auth-key": apiKey },
+        { "access-token": apiKey },
+        { token: apiKey },
       ]
 
-      // Boş anahtar için kimlik doğrulama başlığı olmadan da dene
       if (!apiKey) {
         authHeaders.push({})
       }
@@ -187,14 +149,13 @@ export async function POST(request: NextRequest) {
             headers: {
               "Content-Type": "application/json",
               Accept: "application/json",
-              "User-Agent": "WhatsApp-AI-Integration/1.0", // User-Agent eklendi
+              "User-Agent": "WhatsApp-AI-Integration/1.0",
               ...authHeader,
             },
             body: JSON.stringify(createInstancePayload),
           })
 
           debugLog(`[v0] Response status: ${response.status} for ${authMethod} with ${apiKey || "EMPTY"}`)
-
           debugLog(`[v0] Response headers:`, Object.fromEntries(response.headers.entries()))
 
           if (response.ok) {
@@ -203,28 +164,7 @@ export async function POST(request: NextRequest) {
             debugLog("[v0] Working auth method:", authMethod)
             debugLog("[v0] Success response:", JSON.stringify(data, null, 2))
 
-            try {
-              debugLog("[v0] Saving instance to database:", instanceName)
-              const { error: dbError } = await supabase.from("instances").insert({
-                user_id: user.id,
-                instance_name: instanceName,
-                instance_key: data.instance?.instanceId || instanceName,
-                status: data.instance?.status || "connecting",
-                qr_code: data.qrcode?.base64 || null,
-                workflow_id: null,
-                workflow_name: null,
-              })
-
-              if (dbError) {
-                debugLog("[v0] Error saving instance to database:", dbError)
-                // Don't fail the request if database save fails, but log it
-              } else {
-                debugLog("[v0] Instance successfully saved to database")
-              }
-            } catch (dbErr) {
-              debugLog("[v0] Failed to save instance to database:", dbErr)
-              // Don't fail the request if database save fails
-            }
+            debugLog("[v0] Skipping database save (Supabase disabled)")
 
             return NextResponse.json({
               success: true,
@@ -239,7 +179,6 @@ export async function POST(request: NextRequest) {
               },
             })
           } else if (response.status !== 401) {
-            // 401 dışındaki hatalar için detaylı bilgi
             const errorText = await response.text()
             debugLog(`[v0] Non-401 error (${response.status}):`, errorText)
 

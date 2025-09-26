@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic"
 
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,47 +10,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Package name is required" }, { status: 400 })
     }
 
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    const mockPackages = {
+      Starter: {
+        id: 1,
+        name: "Starter",
+        description: "Perfect for small businesses",
+        price: 29,
+        max_instances: 3,
+        max_messages_per_month: 1000,
+      },
+      Professional: {
+        id: 2,
+        name: "Professional",
+        description: "For growing businesses",
+        price: 79,
+        max_instances: 10,
+        max_messages_per_month: 5000,
+      },
+      Enterprise: {
+        id: 3,
+        name: "Enterprise",
+        description: "For large organizations",
+        price: 199,
+        max_instances: 50,
+        max_messages_per_month: 25000,
+      },
     }
 
-    // Get the target package
-    const { data: targetPackage, error: packageError } = await supabase
-      .from("packages")
-      .select("*")
-      .eq("name", packageName)
-      .eq("is_active", true)
-      .single()
+    const targetPackage = mockPackages[packageName as keyof typeof mockPackages]
 
-    if (packageError || !targetPackage) {
+    if (!targetPackage) {
       return NextResponse.json({ error: "Invalid package" }, { status: 400 })
-    }
-
-    // Update user's subscription
-    const { error: updateError } = await supabase.from("user_subscriptions").upsert(
-      {
-        user_id: user.id,
-        package_id: targetPackage.id,
-        status: "active",
-        started_at: new Date().toISOString(),
-        expires_at: null, // For now, no expiration
-        auto_renew: true,
-      },
-      {
-        onConflict: "user_id",
-      },
-    )
-
-    if (updateError) {
-      console.error("[v0] Error updating user subscription:", updateError)
-      return NextResponse.json({ error: "Failed to upgrade package" }, { status: 500 })
     }
 
     return NextResponse.json({
