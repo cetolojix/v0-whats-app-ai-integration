@@ -49,18 +49,10 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link
-                  href="/auth/login"
+                  href="/instances"
                   className="text-sm text-muted-foreground hover:text-neon-cyan transition-colors"
                 >
-                  Giriş Yap
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/auth/register"
-                  className="text-sm text-muted-foreground hover:text-neon-cyan transition-colors"
-                >
-                  Üye Ol
+                  Yönetim Paneli
                 </Link>
               </li>
             </ul>

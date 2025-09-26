@@ -1,44 +1,10 @@
-import { redirect } from "next/navigation"
 import { NavigationHeader } from "@/components/navigation-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Card, CardContent } from "@/components/ui/card"
 import { Shield, Zap, Users, Star, CheckCircle, ArrowRight } from "lucide-react"
 
 export default async function HomePage() {
-  let user = null
-  let profile = null
-
-  try {
-    const { createClient } = await import("@/lib/supabase/server")
-    const supabase = await createClient()
-
-    // Check if user is authenticated
-    const {
-      data: { user: authUser },
-      error,
-    } = await supabase.auth.getUser()
-
-    if (!error && authUser) {
-      user = authUser
-      // Get user profile to determine redirect
-      const { data: userProfile } = await supabase.from("profiles").select("role").eq("id", authUser.id).single()
-      profile = userProfile
-    }
-  } catch (error) {
-    console.log("[v0] Supabase not configured or error occurred, showing landing page")
-    // Continue to show landing page if Supabase is not configured or has errors
-  }
-
-  // If user is authenticated, redirect based on role
-  if (user && profile) {
-    if (profile.role === "admin") {
-      redirect("/admin")
-    } else {
-      redirect("/dashboard")
-    }
-  }
-
-  // Show landing page for unauthenticated users or when Supabase is not configured
+  // Show landing page for all users
   return (
     <div className="min-h-screen bg-background digital-grid relative flex flex-col">
       <div className="circuit-pattern absolute inset-0 pointer-events-none" />
@@ -71,7 +37,7 @@ export default async function HomePage() {
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <a
-              href="/auth/register"
+              href="/instances"
               className="tech-button inline-flex items-center justify-center px-10 py-5 text-white font-bold rounded-2xl text-lg relative z-10 shadow-2xl shadow-neon-blue/30 group"
             >
               <span className="relative z-10">Hemen Başlayın</span>
@@ -273,7 +239,7 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <a
-              href="/auth/register"
+              href="/instances"
               className="tech-button inline-flex items-center justify-center px-12 py-6 text-white font-bold rounded-2xl text-xl relative z-10 group shadow-2xl shadow-neon-blue/40"
             >
               <span className="relative z-10">Ücretsiz Başlayın</span>

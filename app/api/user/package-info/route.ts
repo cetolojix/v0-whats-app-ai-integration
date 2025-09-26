@@ -17,74 +17,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    const { data: userPackage, error } = await supabase
-      .from("user_packages")
-      .select(`
-        *,
-        packages (
-          id,
-          name,
-          display_name_tr,
-          display_name_en,
-          max_instances,
-          price_yearly,
-          price_monthly,
-          features,
-          is_active
-        )
-      `)
+    const { data: packageInfo, error } = await supabase
+      .from("user_package_info")
+      .select("*")
       .eq("user_id", user.id)
-      .eq("is_active", true)
       .single()
 
     if (error) {
       debugLog("[v0] Error fetching user package info:", error)
 
       if (error.code === "PGRST116") {
-        // No rows found - assign basic package
+        // No rows found
         debugLog("[v0] No package info found, assigning basic package to user:", user.id)
 
         // Get basic package
-        const { data: basicPackage } = await supabase
-          .from("packages")
-          .select("id")
-          .eq("name", "basic")
-          .eq("is_active", true)
-          .single()
+        const { data: basicPackage } = await supabase.from("packages").select("id").eq("name", "basic").single()
 
         if (basicPackage) {
-          // Create user package assignment
-          const { error: assignError } = await supabase.from("user_packages").insert({
+          // Create subscription for user
+          const { error: subscriptionError } = await supabase.from("user_subscriptions").insert({
             user_id: user.id,
             package_id: basicPackage.id,
-            is_active: true,
-            expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+            status: "active",
           })
 
-          if (!assignError) {
+          if (!subscriptionError) {
             // Retry getting package info
-            const { data: retryUserPackage, error: retryError } = await supabase
-              .from("user_packages")
-              .select(`
-                *,
-                packages (
-                  id,
-                  name,
-                  display_name_tr,
-                  display_name_en,
-                  max_instances,
-                  price_yearly,
-                  price_monthly,
-                  features,
-                  is_active
-                )
-              `)
+            const { data: retryPackageInfo, error: retryError } = await supabase
+              .from("user_package_info")
+              .select("*")
               .eq("user_id", user.id)
-              .eq("is_active", true)
               .single()
 
-            if (!retryError && retryUserPackage) {
-              return NextResponse.json({ packageInfo: retryUserPackage })
+            if (!retryError && retryPackageInfo) {
+              return NextResponse.json({ packageInfo: retryPackageInfo })
             }
           }
         }
@@ -93,7 +59,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch package information" }, { status: 500 })
     }
 
-    return NextResponse.json({ packageInfo: userPackage })
+    return NextResponse.json({ packageInfo })
   } catch (error) {
     debugLog("[v0] Error in user package info API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

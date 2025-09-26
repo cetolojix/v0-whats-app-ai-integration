@@ -1,28 +1,34 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+"use client"
+
 import { WhatsAppInstanceManager } from "@/components/whatsapp-instance-manager"
 
-export default async function InstancesPage() {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect("/auth/login")
+export default function InstancesPage() {
+  // Mock user data for the instance manager
+  const mockUser = {
+    id: 1,
+    username: "user",
+    email: "user@example.com",
+    role: "user",
   }
 
-  // Get user profile
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
+  // Mock instances data
+  const mockInstances = [
+    {
+      id: 1,
+      name: "WhatsApp Instance 1",
+      status: "active",
+      phone_number: "+1234567890",
+      created_at: new Date().toISOString(),
+      user_id: mockUser.id,
+    },
+  ]
 
-  if (profile?.role === "admin") {
-    redirect("/admin")
+  // Mock profile data
+  const mockProfile = {
+    id: mockUser.id,
+    username: mockUser.username,
+    role: mockUser.role,
   }
 
-  // Fetch user's instances
-  const { data: instances } = await supabase
-    .from("instances")
-    .select("*")
-    .eq("user_id", data.user.id)
-    .order("created_at", { ascending: false })
-
-  return <WhatsAppInstanceManager user={data.user} profile={profile} instances={instances || []} />
+  return <WhatsAppInstanceManager user={mockUser} profile={mockProfile} instances={mockInstances} />
 }

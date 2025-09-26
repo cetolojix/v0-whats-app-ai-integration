@@ -5,37 +5,6 @@ export const dynamic = "force-dynamic"
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
 const API_KEY = "hvsctnOWysGzOGHea8tEzV2iHCGr9H4L"
 
-export async function GET() {
-  try {
-    console.log("[v0] GET request - listing instances without cleanup")
-
-    const listResponse = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances`, {
-      method: "GET",
-      headers: {
-        apikey: API_KEY,
-        "Content-Type": "application/json",
-      },
-    })
-
-    if (!listResponse.ok) {
-      throw new Error(`Failed to list instances: ${listResponse.status}`)
-    }
-
-    const instances = await listResponse.json()
-    console.log("[v0] Found instances:", instances)
-
-    return NextResponse.json({
-      success: true,
-      instances: instances,
-      message: `Found ${instances.length} instances`,
-      note: "Use POST method to perform cleanup operations",
-    })
-  } catch (error) {
-    console.error("[v0] Failed to list instances:", error)
-    return NextResponse.json({ error: "Failed to list instances" }, { status: 500 })
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { currentInstance } = await request.json()
@@ -46,7 +15,7 @@ export async function POST(request: NextRequest) {
       method: "GET",
       headers: {
         apikey: API_KEY,
-        "Content-Type": 'application/json",',
+        "Content-Type": "application/json",
       },
     })
 

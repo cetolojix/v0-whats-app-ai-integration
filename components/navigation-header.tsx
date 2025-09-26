@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Menu, LogIn, UserPlus } from "lucide-react"
+import { Menu, Settings, Zap } from "lucide-react"
 
 export function NavigationHeader() {
   return (
@@ -45,18 +45,18 @@ export function NavigationHeader() {
             </Link>
             <div className="w-px h-6 bg-border/50" />
             <Link
-              href="/auth/login"
+              href="/instances"
               className="text-muted-foreground hover:text-neon-cyan transition-colors duration-300 font-medium flex items-center"
             >
-              <LogIn className="w-4 h-4 mr-2" />
-              Giriş Yap
+              <Settings className="w-4 h-4 mr-2" />
+              Yönetim
             </Link>
             <Link
-              href="/auth/register"
+              href="/instances"
               className="tech-button inline-flex items-center justify-center px-6 py-2 text-white font-medium rounded-xl text-sm shadow-lg shadow-neon-blue/20"
             >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Üye Ol
+              <Zap className="w-4 h-4 mr-2" />
+              Başla
             </Link>
           </div>
 
@@ -85,15 +85,9 @@ export function NavigationHeader() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/auth/login" className="flex items-center">
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Giriş Yap
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/auth/register" className="flex items-center">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Üye Ol
+                  <Link href="/instances" className="flex items-center">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Yönetim
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>

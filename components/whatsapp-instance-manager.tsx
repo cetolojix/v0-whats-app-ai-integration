@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, MessageSquare, LogOut, Bot, Loader2 } from "lucide-react"
+import { Plus, MessageSquare, Bot, Loader2 } from "lucide-react"
 import { InstanceSetup } from "@/components/instance-setup"
 import { QRCodeDisplay } from "@/components/qr-code-display"
 import { AIChatTester } from "@/components/ai-chat-tester"
@@ -13,7 +13,6 @@ import { InstanceManagement } from "@/components/instance-management"
 import { FeatureShowcase } from "@/components/feature-showcase"
 import { ProgressSteps } from "@/components/progress-steps"
 import { getTranslation, type Translations } from "@/lib/i18n"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { updateInstanceStatus } from "@/app/actions/update-instance-status"
 import { deleteInstance } from "@/app/actions/delete-instance"
@@ -57,7 +56,6 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
   const [promptError, setPromptError] = useState("")
   const [promptSuccess, setPromptSuccess] = useState("")
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem("preferred-language") || "tr"
@@ -98,11 +96,6 @@ export function WhatsAppInstanceManager({ user, profile, instances }: WhatsAppIn
       loadCurrentPrompt(selectedInstance)
     }
   }, [selectedInstance])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-  }
 
   const handleInstanceConnected = async (connectedInstanceName: string) => {
     console.log("[v0] handleInstanceConnected called with:", connectedInstanceName)
@@ -269,10 +262,6 @@ Her zaman nazik ve yardımsever ol.`)
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Hoş geldiniz, {profile?.full_name || user.email}</span>
-              <Button onClick={handleLogout} variant="outline" size="sm">
-                <LogOut className="h-4 w-4 mr-2" />
-                Çıkış
-              </Button>
             </div>
           </div>
         </div>
