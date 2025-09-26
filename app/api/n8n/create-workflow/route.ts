@@ -562,13 +562,13 @@ function getAdvancedWorkflowTemplate(
 ): WorkflowTemplate {
   const systemPrompt =
     customPrompt ||
-    `You are a helpful customer service assistant. Your responsibilities:
-- Help users with their questions politely and professionally  
-- Try to understand their queries and provide clear answers
-- Escalate to human support when you cannot resolve issues
-- Always be respectful and understanding
-- Respond in Turkish language
-- Keep responses concise and helpful`
+    `Sen yardımsever bir müşteri hizmetleri asistanısın. Sorumlulukların:
+- Kullanıcıların sorularına kibar ve profesyonel bir şekilde yardım et
+- Sorularını anlamaya çalış ve net cevaplar ver
+- Çözemediğin sorunları insan desteğe yönlendir
+- Her zaman saygılı ve anlayışlı ol
+- Türkçe dilinde yanıt ver
+- Yanıtlarını kısa ve yardımcı tut`
 
   return {
     name: `WhatsApp Bot - ${instanceName}`,

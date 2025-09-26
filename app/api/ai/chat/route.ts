@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createGroq } from "@ai-sdk/groq"
+import { generateText } from "ai"
 
 interface ChatMessage {
   role: "system" | "user" | "assistant"
@@ -49,7 +51,7 @@ export async function POST(request: NextRequest) {
       ...conversationHistory.slice(-10), // Keep last 10 messages for context
     ]
 
-    // Generate AI response
+    // Generate AI response using Groq
     const aiResponse = await generateAIResponse(messages)
 
     // Add AI response to history
@@ -114,39 +116,26 @@ Instance: ${instanceName}`
 
 async function generateAIResponse(messages: ChatMessage[]): Promise<string> {
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        max_tokens: 150,
-        temperature: 0.7,
-      }),
+    const groq = createGroq({
+      apiKey: process.env.GROQ_API_KEY,
     })
 
-    console.log("[v0] OpenAI response status:", response.status)
+    const { text } = await generateText({
+      model: groq("llama-3.1-8b-instant"),
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      maxTokens: 150,
+      temperature: 0.7,
+    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.log("[v0] OpenAI error:", errorText)
-      throw new Error(`OpenAI API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log("[v0] OpenAI response:", JSON.stringify(data, null, 2))
-
-    return data.choices[0]?.message?.content || "I apologize, but I cannot generate a response right now."
+    console.log("[v0] Groq AI response generated successfully")
+    return text || "I apologize, but I cannot generate a response right now."
   } catch (error) {
     console.error("[v0] Error generating AI response:", error)
 
-    // Fallback to mock responses if OpenAI fails
+    // Fallback to mock responses if AI fails
     const lastMessage = messages[messages.length - 1]?.content.toLowerCase() || ""
 
     if (lastMessage.includes("hello") || lastMessage.includes("hi") || lastMessage.includes("hey")) {

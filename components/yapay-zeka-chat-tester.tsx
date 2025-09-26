@@ -17,12 +17,12 @@ interface ChatMessage {
   timestamp: number
 }
 
-interface AIChatTesterProps {
+interface YapayZekaChatTesterProps {
   instanceName: string
   customPrompt?: string
 }
 
-export function AIChatTester({ instanceName, customPrompt }: AIChatTesterProps) {
+export function YapayZekaChatTester({ instanceName, customPrompt }: YapayZekaChatTesterProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [currentMessage, setCurrentMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -70,7 +70,7 @@ export function AIChatTester({ instanceName, customPrompt }: AIChatTesterProps) 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "AI yanıtı alınamadı")
+        throw new Error(data.error || "Yapay Zeka yanıtı alınamadı")
       }
 
       const aiMessage: ChatMessage = {
@@ -109,10 +109,10 @@ export function AIChatTester({ instanceName, customPrompt }: AIChatTesterProps) 
           <div>
             <CardTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
               <MessageSquare className="h-6 w-6 text-neon-cyan" />
-              AI Sohbet Testi
+              Yapay Zeka Sohbet Testi
             </CardTitle>
             <CardDescription className="text-muted-foreground">
-              "{instanceName}" için AI yanıtlarını test edin
+              "{instanceName}" için Yapay Zeka yanıtlarını test edin
               {customPrompt && (
                 <Badge variant="outline" className="ml-2 text-xs bg-neon-blue/20 text-neon-cyan border-neon-cyan/30">
                   Özel Prompt Aktif
@@ -148,7 +148,8 @@ export function AIChatTester({ instanceName, customPrompt }: AIChatTesterProps) 
                     <Bot className="mx-auto h-16 w-16 text-neon-cyan mb-6 opacity-80" />
                     <h3 className="text-2xl font-bold text-foreground mb-3">Sohbeti Başlatın</h3>
                     <p className="text-muted-foreground text-lg leading-relaxed max-w-md mx-auto">
-                      AI asistanınızın farklı türdeki sorulara nasıl yanıt verdiğini test etmek için bir mesaj gönderin.
+                      Yapay Zeka asistanınızın farklı türdeki sorulara nasıl yanıt verdiğini test etmek için bir mesaj
+                      gönderin.
                     </p>
                   </div>
                 </div>
@@ -193,7 +194,7 @@ export function AIChatTester({ instanceName, customPrompt }: AIChatTesterProps) 
                         <div className="rounded-2xl px-4 py-3 bg-background/50 border border-border/50 backdrop-blur-sm shadow-lg">
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
-                            <span className="text-sm text-muted-foreground">AI düşünüyor...</span>
+                            <span className="text-sm text-muted-foreground">Yapay Zeka düşünüyor...</span>
                           </div>
                         </div>
                       </div>

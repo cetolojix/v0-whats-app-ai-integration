@@ -1,11 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 const EVOLUTION_API_URL = "https://evolu.cetoloji.com"
-const EVOLUTION_API_KEY = "hvsctnOWysGzOGHea8tEzV2iHCGr9H4Ln8n"
+const EVOLUTION_API_KEY = "hvsctnOWysGzOGHea8tEzV2iHCGr9H4L"
 
 export async function POST(request: NextRequest) {
   try {
     const { instanceName, number, message, messageType = "text" } = await request.json()
+
+    console.log("[v0] Sending message:", { instanceName, number, messageType })
 
     if (!instanceName || !number || !message) {
       return NextResponse.json({ error: "Missing required fields: instanceName, number, message" }, { status: 400 })
@@ -37,6 +39,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Unsupported message type" }, { status: 400 })
     }
 
+    console.log("[v0] Evolution API request:", { endpoint, payload })
+
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -46,12 +50,24 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(payload),
     })
 
+    console.log("[v0] Evolution API response status:", response.status)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `HTTP ${response.status}: Failed to send message`)
+      const errorText = await response.text()
+      console.log("[v0] Evolution API error response:", errorText)
+
+      let errorData = {}
+      try {
+        errorData = JSON.parse(errorText)
+      } catch (e) {
+        errorData = { message: errorText }
+      }
+
+      throw new Error(`HTTP ${response.status}: ${errorData.message || "Failed to send message"}`)
     }
 
     const data = await response.json()
+    console.log("[v0] Evolution API success response:", data)
 
     return NextResponse.json({
       success: true,
@@ -59,9 +75,10 @@ export async function POST(request: NextRequest) {
       timestamp: data.messageTimestamp,
       instanceName,
       recipient: number,
+      data,
     })
   } catch (error) {
-    console.error("Error sending message:", error)
+    console.error("[v0] Error sending message:", error)
 
     const errorMessage = error instanceof Error ? error.message : "Failed to send message"
 

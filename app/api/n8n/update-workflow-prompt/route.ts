@@ -28,9 +28,18 @@ export async function POST(request: NextRequest) {
     }
 
     const workflowsData = await workflowsResponse.json()
-    const workflow = workflowsData.data?.find(
-      (w: any) => w.name.includes(instanceName) && w.name.includes("WhatsApp Bot"),
-    )
+
+    const workflow = workflowsData.data?.find((w: any) => {
+      const workflowName = w.name.toLowerCase()
+      const instance = instanceName.toLowerCase()
+
+      return (
+        workflowName.includes(instance) &&
+        (workflowName.includes("whatsapp bot") ||
+          workflowName.includes("whatsapp ai") ||
+          workflowName.includes("whatsapp yapay zeka"))
+      )
+    })
 
     if (!workflow) {
       return NextResponse.json({ error: "Workflow not found for this instance" }, { status: 404 })
@@ -51,12 +60,12 @@ export async function POST(request: NextRequest) {
     }
 
     const workflowDetail = await workflowDetailResponse.json()
-    console.log("[v0] Got workflow details, updating AI Agent node...")
+    console.log("[v0] Got workflow details, updating Yapay Zeka Agent node...")
 
-    // Find and update the AI Agent node with the new prompt
     const updatedNodes = workflowDetail.nodes.map((node: any) => {
+      // Check for AI Agent node (LangChain)
       if (node.name === "AI Agent" || node.type === "@n8n/n8n-nodes-langchain.agent") {
-        console.log("[v0] Updating AI Agent node with new prompt")
+        console.log("[v0] Updating Yapay Zeka Agent node with new prompt")
         return {
           ...node,
           parameters: {
@@ -68,6 +77,41 @@ export async function POST(request: NextRequest) {
           },
         }
       }
+
+      // Check for OpenAI node
+      if (node.type === "n8n-nodes-base.openAi") {
+        console.log("[v0] Updating OpenAI node with new prompt")
+        return {
+          ...node,
+          parameters: {
+            ...node.parameters,
+            prompt: customPrompt,
+          },
+        }
+      }
+
+      // Check for Code node that might contain the prompt
+      if (node.type === "n8n-nodes-base.code" && node.parameters?.jsCode) {
+        const jsCode = node.parameters.jsCode
+        if (jsCode.includes("prompt") || jsCode.includes("systemMessage")) {
+          console.log("[v0] Updating Code node with new prompt")
+          // Replace prompt in the code
+          const updatedCode = jsCode
+            .replace(/const\s+prompt\s*=\s*[`"'][^`"']*[`"']/s, `const prompt = \`${customPrompt}\``)
+            .replace(/prompt\s*:\s*[`"'][^`"']*[`"']/s, `prompt: \`${customPrompt}\``)
+            .replace(/systemPrompt\s*=\s*[`"'][^`"']*[`"']/s, `systemPrompt = \`${customPrompt}\``)
+            .replace(/systemMessage\s*:\s*[`"'][^`"']*[`"']/s, `systemMessage: \`${customPrompt}\``)
+
+          return {
+            ...node,
+            parameters: {
+              ...node.parameters,
+              jsCode: updatedCode,
+            },
+          }
+        }
+      }
+
       return node
     })
 
@@ -101,7 +145,7 @@ export async function POST(request: NextRequest) {
       success: true,
       workflowId: workflow.id,
       workflowName: workflow.name,
-      message: "AI prompt updated successfully",
+      message: "Yapay Zeka prompt updated successfully",
     })
   } catch (error) {
     console.error("[v0] Error updating workflow prompt:", error)

@@ -301,3 +301,29 @@
     transform: translateY(-10px) rotate(-1deg);
   }
 }
+
+/* Added fade-in animation for smooth page transitions */
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Added card hover effect for better interactivity */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 40px rgba(0, 255, 255, 0.2);
+}

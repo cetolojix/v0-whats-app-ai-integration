@@ -75,16 +75,16 @@ export default async function HomePage() {
                 </svg>
               </a>
               <a
-                href="/auth/login"
+                href="/chat-test"
                 className="hologram-card inline-flex items-center justify-center px-10 py-5 text-foreground font-bold rounded-2xl text-lg hover:bg-secondary/30 transition-all duration-300 shadow-lg"
               >
-                Demo Görüntüle
+                Sohbet Testi
                 <svg className="w-6 h-6 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
               </a>
